@@ -1,0 +1,10 @@
+[package]
+name = "big_integer"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+libc = "0.2.182"
+
+[build-dependencies]
+pkg-config = "0.3"
