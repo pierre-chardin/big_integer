@@ -25,7 +25,7 @@ pub enum BigIntegerErrorKind {
 impl ParseBigIntegerError {
     /// Outputs the  cause of parsing a big integer failing.
     ///
-    pub fn kind_(&self) -> &BigIntegerErrorKind {
+    pub fn kind(&self) -> &BigIntegerErrorKind {
         &self.kind
     }
 }

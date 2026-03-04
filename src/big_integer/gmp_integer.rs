@@ -2,6 +2,8 @@
 //! For details on GMP, see https://gmplib.org/.
 //!
 
+//TODO: Check visibility. This module should be internal to big_integer.
+
 use libc::{c_char, c_int, c_long, c_ulong, size_t};
 use std::ffi::{CStr, CString, c_void};
 use std::mem;
@@ -15,6 +17,34 @@ pub(super) struct MpzStruct {
     _mp_d: *mut c_void,
 }
 
+/// An unsigned integer value. Depending on platform, may be u32 or u64.
+pub type UWord = c_ulong;
+/// A signed integer value. Depending on platform, may be i32 or i64.
+pub type SWord = c_long;
+
+/// Byte order to use for byte slices.
+///
+pub enum ByteOrder {
+    LittleEndian,
+    NativeEndian,
+    BigEndian,
+}
+
+#[inline]
+fn byte_order_to_c_int(e: ByteOrder) -> c_int {
+    match e {
+        ByteOrder::LittleEndian => -1,
+        ByteOrder::NativeEndian => DEFAULT_BYTE_ORDER,
+        ByteOrder::BigEndian => 1,
+    }
+}
+
+#[cfg(target_endian = "big")]
+const DEFAULT_BYTE_ORDER: c_int = 1;
+
+#[cfg(target_endian = "little")]
+const DEFAULT_BYTE_ORDER: c_int = -1;
+
 impl MpzStruct {
     /// Creates a GMP integer equal to 0.
     ///
@@ -26,79 +56,59 @@ impl MpzStruct {
         }
     }
 
-    // TODO: Implement from_u64 and from_i64. Note: On windows, c_ulong=u32 and c_long=i32.
-
-    ///  Converts an `u32` value to a GMP integer.
+    ///  Converts an unsigned integer value to a GMP integer.
     ///
     #[inline]
-    pub fn from_u32(value: u32) -> MpzStruct {
-        from_c_ulong(value as c_ulong)
+    pub fn from_u_word(value: UWord) -> MpzStruct {
+        unsafe {
+            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            __gmpz_init_set_ui(v.as_mut_ptr(), value);
+            v.assume_init()
+        }
     }
 
-    ///  Converts an `i32` value to a GMP integer.
+    ///  Converts a signed integer value to a GMP integer.
     ///
     #[inline]
-    pub fn from_i32(value: i32) -> MpzStruct {
-        from_c_long(value as c_long)
+    pub fn from_s_word(value: SWord) -> MpzStruct {
+        unsafe {
+            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            __gmpz_init_set_si(v.as_mut_ptr(), value);
+            v.assume_init()
+        }
     }
 
-    ///  Converts an `u64` value to a GMP integer.
+    /// Converts a byte slice to a GMP integer. Items are ordered with the most significant bytes
+    /// first. The byte slice `positive_value`is always considered representing a positive integer.
+    /// To get a negative GMP integer, set `sign_is_minus` to `true`.
     ///
-    pub fn from_u64(value: u64) -> MpzStruct {
-        // Compiler should optimize code if c_ulong is u64.
-
-        #[allow(clippy::unnecessary_cast)] // On some platforms c_ulong is not an u64.
-        if value <= c_ulong::MAX as u64 {
-            return from_c_ulong(value as c_ulong);
+    pub fn from_bytes(
+        sign_is_minus: bool,
+        positive_value: &[u8],
+        byte_order: ByteOrder,
+    ) -> MpzStruct {
+        let mut bint: MpzStruct;
+        unsafe {
+            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            __gmpz_init(v.as_mut_ptr());
+            bint = v.assume_init();
         }
 
-        MpzStruct::from_u128(value as u128)
-    }
-
-    ///  Converts an `i64` value to a GMP integer.
-    ///
-    pub fn from_i64(value: i64) -> MpzStruct {
-        // Compiler should optimize code if c_ulong is u64.
-
-        #[allow(clippy::unnecessary_cast)] // On some platforms c_ulong is not an u64.
-        if value > c_long::MAX as i64 {
-            return MpzStruct::from_u128(value as u128);
-        }
-
-        #[allow(clippy::unnecessary_cast)] // On some platforms c_ulong is not an u64.
-        if value < c_long::MIN as i64 {
-            let mut bint = MpzStruct::from_u128((-value) as u128);
-            unsafe { __gmpz_neg(&mut bint, &bint) };
-            return bint;
-        }
-
-        from_c_ulong(value as c_ulong)
-    }
-
-    ///  Converts an `u128` value to a GMP integer.
-    ///
-    pub fn from_u128(mut value: u128) -> MpzStruct {
-        let mut array: Vec<c_ulong> = Vec::new();
-        loop {
-            array.push(value as c_ulong);
-            value >>= c_ulong::BITS;
-            if value == 0 {
-                break;
+        unsafe {
+            __gmpz_import(
+                &mut bint,
+                positive_value.len(),
+                byte_order_to_c_int(byte_order),
+                size_of::<u8>(),
+                0,
+                0,
+                positive_value.as_ptr() as *const c_void,
+            );
+            if sign_is_minus {
+                __gmpz_neg(&mut bint, &bint);
             }
         }
 
-        from_c_long_array(&array)
-    }
-
-    ///  Converts an `i128` value to a GMP integer.
-    ///
-    pub fn from_i128(value: i128) -> MpzStruct {
-        if value >= 0 {
-            return MpzStruct::from_u128(value as u128);
-        }
-
-        let mut bint = MpzStruct::from_u128((-value) as u128);
-        unsafe { __gmpz_neg(&mut bint, &bint) };
         bint
     }
 
@@ -114,40 +124,83 @@ impl MpzStruct {
         from_str_radix_internal(src, to_gmp_radix(radix))
     }
 
-    /// Converts a GMP integer to a lowercase string for the given `radix`.
+    /// Converts the GMP integer to a lowercase string for the given `radix`. If
+    /// `radix`equal or less than 10, one should use instead [`to_string_radix()`].
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_lowercase_radix(self: &Self, radix: u32) -> String {
+    pub fn to_string_lowercase_radix(&self, radix: u32) -> String {
         to_string_radix_internal(self, to_gmp_radix(radix))
     }
 
-    /// Converts a GMP integer to an uppercase string for the given `radix`.
+    /// Converts the GMP integer to an uppercase string for the given `radix`.If
+    /// `radix`equal or less than 10, one should use instead [`to_string_radix()`].
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_uppercase_radix(self: &Self, radix: u32) -> String {
+    pub fn to_string_uppercase_radix(&self, radix: u32) -> String {
         to_string_radix_internal(self, to_gmp_radix(radix)).to_uppercase()
     }
 
-    /// Converts a GMP integer to a string for the given `radix`. Any character case may be used.
+    /// Converts the GMP integer to a string for the given `radix`. Any character case may be used.
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_radix(self: &Self, radix: u32) -> String {
+    pub fn to_string_radix(&self, radix: u32) -> String {
         to_string_radix_internal(self, to_gmp_radix(radix))
+    }
+
+    ///  Returns the GMP integer + `op`.
+    ///
+    #[inline]
+    pub fn add(&self, op: &Self) -> Self {
+        let mut result = MpzStruct::new();
+        unsafe {
+            __gmpz_add(&mut result, self, op);
+        }
+        result
+    }
+
+    ///  Adds `op` to the GMP integer.
+    ///
+    #[inline]
+    pub fn add_assign(&mut self, op: &Self) {
+        unsafe {
+            __gmpz_add(self, self, op);
+        }
+    }
+
+    ///  Returns the GMP integer * `op`.
+    ///
+    #[inline]
+    pub fn mul(&self, op: &Self) -> Self {
+        let mut result = MpzStruct::new();
+        unsafe {
+            __gmpz_mul(&mut result, self, op);
+        }
+        result
+    }
+
+    ///  Multiplies the GMP integer by op.
+    ///
+    #[inline]
+    pub fn mul_assign(&mut self, op: &Self) {
+        unsafe {
+            __gmpz_mul(self, self, op);
+        }
     }
 }
 
+/// Drop trait.
 /// Frees all allocated memory.
 ///
 impl Drop for MpzStruct {
@@ -155,6 +208,26 @@ impl Drop for MpzStruct {
         unsafe {
             __gmpz_clear(self);
         }
+    }
+}
+
+/// Clone trait.
+///
+impl Clone for MpzStruct {
+    fn clone(&self) -> Self {
+        unsafe {
+            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            __gmpz_init_set(v.as_mut_ptr(), self);
+            v.assume_init()
+        }
+    }
+}
+
+/// Trait for equality operator.
+///
+impl PartialEq for MpzStruct {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe { __gmpz_cmp(self, other) == 0 }
     }
 }
 
@@ -172,6 +245,9 @@ fn to_gmp_radix(radix: u32) -> c_int {
 /// Converts a GMP integer to a string for the given `radix`. Does not check if `radix` is valid.
 ///
 fn from_str_radix_internal(src: &str, radix: c_int) -> Option<MpzStruct> {
+    // GMP does not accept a leading `+` but accepts a leading `-`.
+    let src = src.trim_start().trim_start_matches('+');
+
     let src_c_str = CString::new(src).unwrap(); // Variable must NOT be dropped before the C function is done with the pointer.
     unsafe {
         let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
@@ -183,50 +259,6 @@ fn from_str_radix_internal(src: &str, radix: c_int) -> Option<MpzStruct> {
         }
         Some(v.assume_init())
     }
-}
-
-/// Converts an `c_ulong` value to a GMP integer.
-///
-fn from_c_ulong(value: c_ulong) -> MpzStruct {
-    unsafe {
-        let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
-        __gmpz_init_set_ui(v.as_mut_ptr(), value);
-        v.assume_init()
-    }
-}
-
-/// Converts an `c_long` value to a GMP integer.
-///
-fn from_c_long(value: c_long) -> MpzStruct {
-    unsafe {
-        let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
-        __gmpz_init_set_si(v.as_mut_ptr(), value);
-        v.assume_init()
-    }
-}
-
-/// Converts an array of `c_ulong` to a positive GMP integer.
-fn from_c_long_array(value: &[c_ulong]) -> MpzStruct {
-    let mut bint: MpzStruct;
-    unsafe {
-        let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
-        __gmpz_init(v.as_mut_ptr());
-        bint = v.assume_init();
-    }
-
-    unsafe {
-        __gmpz_import(
-            &mut bint,
-            value.len(),
-            -1,
-            size_of::<c_ulong>(),
-            0,
-            0,
-            value.as_ptr() as *const c_void,
-        )
-    }
-
-    bint
 }
 
 /// Converts a GMP integer  to a string for the given `radix`. Does not check if `radix` is valid.
@@ -269,16 +301,16 @@ unsafe extern "C" {
     // fn __gmpz_get_d(op: *const MpzStruct) -> c_double;
     // fn __gmpz_fits_slong_p(op: *const MpzStruct) -> c_long;
     // fn __gmpz_sizeinbase(op: *const MpzStruct, base: c_int) -> size_t;
-    // fn __gmpz_cmp(op1: *const MpzStruct, op2: *const MpzStruct) -> c_int;
+    fn __gmpz_cmp(op1: *const MpzStruct, op2: *const MpzStruct) -> c_int;
     // fn __gmpz_cmp_ui(op1: *const MpzStruct, op2: c_ulong) -> c_int;
-    // fn __gmpz_add(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
-    fn __gmpz_add_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
+    fn __gmpz_add(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
+    // fn __gmpz_add_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
     // fn __gmpz_sub(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
     // fn __gmpz_sub_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
     // fn __gmpz_ui_sub(rop: *mut MpzStruct, op1: c_ulong, op2: *const MpzStruct);
-    // fn __gmpz_mul(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
-    fn __gmpz_mul_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
-    fn __gmpz_mul_si(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_long);
+    fn __gmpz_mul(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
+    // fn __gmpz_mul_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
+    // fn __gmpz_mul_si(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_long);
     // fn __gmpz_mul_2exp(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
     // fn __gmpz_addmul(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_long);
     // fn __gmpz_addmul_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);

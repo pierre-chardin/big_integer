@@ -1,0 +1,371 @@
+// Integration test for `big_integer`.
+
+use big_integer::big_integer::BigInteger;
+use big_integer::big_integer::error::BigIntegerErrorKind;
+use std::str::FromStr;
+
+// TODO: Add tests for negative numbers. and signed interfers i32, i64, i128...
+
+#[test]
+fn to_string() {
+    assert_eq!(BigInteger::zero().to_string(), "0");
+    assert_eq!(BigInteger::one().to_string(), "1");
+
+    let value = u32::MAX - 43;
+    let value_big_integer = BigInteger::from(value);
+    assert_eq!(value_big_integer.to_string(), value.to_string());
+
+    let value128 = u128::MAX - 43;
+    let value_big_integer = BigInteger::from(value128);
+    assert_eq!(value_big_integer.to_string(), value128.to_string());
+}
+
+#[test]
+fn format() {
+    for test_value in [u128::MAX, 45, 0, 432, 765432765434321] {
+        let value = BigInteger::from(test_value);
+
+        // Decimal output.
+        assert_eq!(format!("{}", value), format!("{}", test_value));
+        assert_eq!(format!("{:+}", value), format!("{:+}", test_value));
+        assert_eq!(format!("{:#}", value), format!("{:#}", test_value));
+        assert_eq!(format!("{:+#}", value), format!("{:+#}", test_value));
+
+        assert_eq!(format!("{:?}", value), format!("{:?}", test_value));
+        assert_eq!(format!("{:+?}", value), format!("{:+?}", test_value));
+        assert_eq!(format!("{:#?}", value), format!("{:#?}", test_value));
+        assert_eq!(format!("{:+#?}", value), format!("{:+#?}", test_value));
+
+        assert_eq!(format!("{:04}", value), format!("{:04}", test_value));
+        assert_eq!(format!("{:01}", value), format!("{:01}", test_value));
+        assert_eq!(format!("{:050}", value), format!("{:050}", test_value));
+
+        assert_eq!(format!("{:+04}", value), format!("{:+04}", test_value));
+        assert_eq!(format!("{:+01}", value), format!("{:+01}", test_value));
+        assert_eq!(format!("{:+050}", value), format!("{:+050}", test_value));
+
+        // Lower hex output.
+        assert_eq!(format!("{:x}", value), format!("{:x}", test_value));
+        assert_eq!(format!("{:+x}", value), format!("{:+x}", test_value));
+        assert_eq!(format!("{:#x}", value), format!("{:#x}", test_value));
+        assert_eq!(format!("{:+#x}", value), format!("{:+#x}", test_value));
+
+        assert_eq!(format!("{:04x}", value), format!("{:04x}", test_value));
+        assert_eq!(format!("{:01x}", value), format!("{:01x}", test_value));
+        assert_eq!(format!("{:050x}", value), format!("{:050x}", test_value));
+
+        assert_eq!(format!("{:+04x}", value), format!("{:+04x}", test_value));
+        assert_eq!(format!("{:+01x}", value), format!("{:+01x}", test_value));
+        assert_eq!(format!("{:+050x}", value), format!("{:+050x}", test_value));
+
+        // Upper hex output.
+        assert_eq!(format!("{:X}", value), format!("{:X}", test_value));
+        assert_eq!(format!("{:+X}", value), format!("{:+X}", test_value));
+        assert_eq!(format!("{:#X}", value), format!("{:#X}", test_value));
+        assert_eq!(format!("{:+#X}", value), format!("{:+#X}", test_value));
+
+        assert_eq!(format!("{:04X}", value), format!("{:04X}", test_value));
+        assert_eq!(format!("{:01X}", value), format!("{:01X}", test_value));
+        assert_eq!(format!("{:050X}", value), format!("{:050X}", test_value));
+
+        assert_eq!(format!("{:+04X}", value), format!("{:+04X}", test_value));
+        assert_eq!(format!("{:+01X}", value), format!("{:+01X}", test_value));
+        assert_eq!(format!("{:+050X}", value), format!("{:+050X}", test_value));
+
+        // Octal output.
+        assert_eq!(format!("{:o}", value), format!("{:o}", test_value));
+        assert_eq!(format!("{:+o}", value), format!("{:+o}", test_value));
+        assert_eq!(format!("{:#o}", value), format!("{:#o}", test_value));
+        assert_eq!(format!("{:+#o}", value), format!("{:+#o}", test_value));
+
+        assert_eq!(format!("{:04o}", value), format!("{:04o}", test_value));
+        assert_eq!(format!("{:01o}", value), format!("{:01o}", test_value));
+        assert_eq!(format!("{:050o}", value), format!("{:050o}", test_value));
+
+        assert_eq!(format!("{:+04o}", value), format!("{:+04o}", test_value));
+        assert_eq!(format!("{:+01o}", value), format!("{:+01o}", test_value));
+        assert_eq!(format!("{:+050o}", value), format!("{:+050o}", test_value));
+
+        // Upper hex output.
+        assert_eq!(format!("{:b}", value), format!("{:b}", test_value));
+        assert_eq!(format!("{:+b}", value), format!("{:+b}", test_value));
+        assert_eq!(format!("{:#b}", value), format!("{:#b}", test_value));
+        assert_eq!(format!("{:+#b}", value), format!("{:+#b}", test_value));
+
+        assert_eq!(format!("{:04b}", value), format!("{:04b}", test_value));
+        assert_eq!(format!("{:01b}", value), format!("{:01b}", test_value));
+        assert_eq!(format!("{:050b}", value), format!("{:050b}", test_value));
+
+        assert_eq!(format!("{:+04b}", value), format!("{:+04b}", test_value));
+        assert_eq!(format!("{:+01b}", value), format!("{:+01b}", test_value));
+        assert_eq!(format!("{:+050b}", value), format!("{:+050b}", test_value));
+    }
+}
+
+#[test]
+fn from_str() {
+    {
+        let value_string = "5432122132331313131313131313131313131313";
+        let value_big_integer = BigInteger::from_str(value_string).unwrap();
+        assert_eq!(value_big_integer.to_string(), value_string);
+    }
+
+    {
+        let value_string = "+6323232323232323231231777553532";
+        let value_big_integer = BigInteger::from_str(value_string).unwrap();
+        assert_eq!(value_big_integer.to_string(), value_string[1..]);
+    }
+
+    {
+        let value_string = "-3232332323";
+        let value_big_integer = BigInteger::from_str(value_string).unwrap();
+        assert_eq!(value_big_integer.to_string(), value_string);
+    }
+
+    {
+        let value_string = "-323XX2332323";
+        let err = BigInteger::from_str(value_string).unwrap_err();
+        assert_eq!(err.kind(), &BigIntegerErrorKind::InvalidDigit);
+    }
+}
+
+#[test]
+fn from_str_radix() {
+    // (radix, string_value, to_string())
+    let test_data: [(u32, &str, fn(v: &BigInteger) -> String); 3] = [
+        (
+            16,
+            "FCFF4FAF3FFF1FFF8FFF4FFFF002EF5FCeFFaFF3FFFF6FFF7FF8FFbFFF9F8",
+            |v: &BigInteger| format!("{:X}", v),
+        ),
+        (
+            8,
+            "512376543222121211313362164323122330011331131313313124540",
+            |v: &BigInteger| format!("{:o}", v),
+        ),
+        (
+            2,
+            "10111100001110011111110000111110000111111100000111100111010101010000011",
+            |v: &BigInteger| format!("{:b}", v),
+        ),
+    ];
+
+    // (radix, string_value)
+    let err_test_data = [
+        (
+            16,
+            "FCFF4FAF3FFF1FFF8FFF4FFFF002EF5FCeFFGaFF3FFFF6FFF7FF8FFbFFF9F8",
+        ),
+        (
+            8,
+            "5123765432221212113133621643231223300811331131313313124540",
+        ),
+        (
+            2,
+            "101111000011100111111100001111100001111111000200111100111010101010000011",
+        ),
+    ];
+
+    for (radix, value_string, to_str) in test_data {
+        let value_big_integer = BigInteger::from_str_radix(value_string, radix).unwrap();
+        assert_eq!(to_str(&value_big_integer), value_string.to_uppercase());
+
+        let value_string_with_leading_zeros = String::from_str("000").unwrap() + value_string;
+        let value_big_integer2 =
+            BigInteger::from_str_radix(&value_string_with_leading_zeros, radix).unwrap();
+        assert_eq!(value_big_integer2, value_big_integer);
+
+        let value_string_with_plus = String::from_str("+000").unwrap() + value_string;
+        let value_big_integer3 =
+            BigInteger::from_str_radix(&value_string_with_plus, radix).unwrap();
+        assert_eq!(value_big_integer3, value_big_integer);
+    }
+
+    for (radix, value_string) in err_test_data {
+        let err = BigInteger::from_str_radix(value_string, radix).unwrap_err();
+        assert_eq!(err.kind(), &BigIntegerErrorKind::InvalidDigit);
+    }
+}
+
+#[test]
+fn from_bool() {
+    let a = BigInteger::from(false);
+    assert_eq!(a, BigInteger::zero());
+
+    let b = BigInteger::from(true);
+    assert_eq!(b, BigInteger::one())
+}
+
+#[test]
+fn from_char() {
+    assert_eq!(BigInteger::from('a'), BigInteger::from(u32::from('a')));
+    assert_eq!(BigInteger::from('z'), BigInteger::from(u32::from('z')));
+    assert_eq!(BigInteger::from('é'), BigInteger::from(u32::from('é')));
+}
+
+#[derive(Default)]
+struct TestDefault {
+    value1: BigInteger,
+    value2: BigInteger,
+}
+
+#[test]
+fn default() {
+    let test = TestDefault::default();
+    assert_eq!(test.value1.to_string(), "0");
+    assert_eq!(test.value2.to_string(), "0");
+}
+
+#[test]
+fn equal() {
+    assert_eq!(BigInteger::zero(), BigInteger::zero());
+    assert_eq!(BigInteger::one(), BigInteger::one());
+    assert_ne!(BigInteger::zero(), BigInteger::one());
+    assert_ne!(BigInteger::one(), BigInteger::zero());
+
+    let value1_string = "5341244814206912412774132148472101346641124414";
+    let value1 = BigInteger::from_str(value1_string).unwrap();
+    let value1_copy = BigInteger::from_str(value1_string).unwrap();
+    assert_eq!(value1, value1_copy);
+    assert_ne!(value1, BigInteger::zero());
+    assert_ne!(value1, BigInteger::one());
+
+    let value2 = BigInteger::from_str("5341244814206912412774132148472101346641124410").unwrap();
+    assert_ne!(value1, value2);
+}
+
+#[test]
+fn clone() {
+    assert_eq!(BigInteger::zero().clone(), BigInteger::zero());
+    assert_eq!(BigInteger::one().clone(), BigInteger::one());
+
+    let value1 = BigInteger::from_str("6646132452567387694328008845").unwrap();
+    let value2 = value1.clone();
+    assert_eq!(value1, value2);
+}
+
+#[test]
+fn from_str_zero() {
+    assert_eq!(BigInteger::zero(), BigInteger::from_str("0").unwrap());
+}
+
+#[test]
+fn add_assign() {
+    {
+        let mut v = BigInteger::zero();
+        v += &BigInteger::zero();
+        assert_eq!(v, BigInteger::zero());
+    }
+    {
+        let mut v = BigInteger::zero();
+
+        v += &BigInteger::from(u64::MAX);
+        assert_eq!(v, BigInteger::from(u64::MAX));
+
+        v += &BigInteger::one();
+        assert_eq!(v, BigInteger::from(u64::MAX as u128 + 1));
+
+        v += &BigInteger::from(u64::MAX);
+        v += &BigInteger::one();
+        assert_eq!(v, BigInteger::from((u64::MAX as u128 + 1) * 2));
+    }
+
+    {
+        let mut v = BigInteger::from(u128::MAX);
+
+        let add_value: u32 = 0xFF;
+        v += &BigInteger::from(add_value);
+
+        assert_eq!(
+            v,
+            BigInteger::from_str_radix("1000000000000000000000000000000FE", 16).unwrap()
+        );
+    }
+
+    {
+        let mut v = BigInteger::from_str_radix(
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD",
+            16,
+        )
+        .unwrap();
+        let add_value: u32 = 0xF8;
+        v += &BigInteger::from(add_value);
+
+        let expected = BigInteger::from_str_radix(
+            "1000000000000000000000000000000000000000000000000000000000000000000000000000000F5",
+            16,
+        )
+        .unwrap();
+
+        assert_eq!(v, expected);
+    }
+}
+
+#[test]
+fn add() {
+    {
+        let a = BigInteger::from_str("621345890643261965432186543113853297441904443").unwrap();
+        let b = BigInteger::from_str("8643218964031223565422000000").unwrap();
+
+        let s1 = BigInteger::from_str("621345890643261974075405507145076862863904443").unwrap();
+
+        let r1 = &a + &b;
+        assert_eq!(r1, s1);
+
+        let r2 = &a + b;
+        assert_eq!(r2, s1);
+
+        let s2 = BigInteger::from_str("1242691781286523948150811014290153725727808886").unwrap();
+
+        let r3 = r1 + &r2;
+        assert_eq!(r3, s2);
+
+        let s2 = BigInteger::from_str("1864037671929785922226216521435230588591713329").unwrap();
+
+        let r4 = r3 + r2;
+        assert_eq!(r4, s2);
+    }
+
+    {
+        let a = BigInteger::from(u64::MAX);
+        let b = BigInteger::one();
+        let c = BigInteger::from(u64::MAX);
+        let d = BigInteger::one();
+        let e = BigInteger::zero();
+        let f = BigInteger::from(u64::MAX);
+
+        let r1 = &a + &b + (c + &d) + e + f;
+        let s1 = 3 * (u64::MAX as u128) + 2;
+        assert_eq!(r1, BigInteger::from(s1));
+    }
+
+    assert_eq!(BigInteger::zero() + BigInteger::zero(), BigInteger::zero());
+
+    assert_eq!(BigInteger::zero() + BigInteger::one(), BigInteger::one());
+    assert_eq!(BigInteger::one() + BigInteger::zero(), BigInteger::one());
+}
+
+#[test]
+fn mul() {
+    let a = BigInteger::from_str("94216502321054376443222300543223455").unwrap();
+    let b = BigInteger::from_str("7645388531954212345777324452245224").unwrap();
+
+    let p1 = BigInteger::from_str(
+        "720321766366226559177076379734170052180946354147405194899833088528920",
+    )
+    .unwrap();
+
+    assert_eq!(&a * &b, p1);
+    assert_eq!(&a * b.clone(), p1);
+    assert_eq!(a.clone() * &b, p1);
+    assert_eq!(a.clone() * b.clone(), p1);
+
+    let c = &a * BigInteger::zero();
+    assert_eq!(c, BigInteger::zero());
+    assert_eq!(BigInteger::zero() * &b, BigInteger::zero());
+    assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
+
+    assert_eq!(&a * BigInteger::one(), a);
+    assert_eq!(BigInteger::one() * &b, b);
+    assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
+}

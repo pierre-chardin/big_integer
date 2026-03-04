@@ -5,20 +5,18 @@
 pub mod error;
 mod gmp_integer;
 
-use core::fmt;
-use std::error::Error;
-use std::fmt::{Binary, Debug, Display, Formatter, LowerHex, Octal, UpperHex};
-use std::num::{IntErrorKind, ParseIntError};
+use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
 use std::ops::{Add, AddAssign, Mul};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
+use crate::big_integer::gmp_integer::{ByteOrder, UWord};
 use gmp_integer::MpzStruct;
 
 /// Struct `BigInteger` is an arbitrary-precision integer.
-/// It provides operation similar to RUST operators for interger primitive types (i32, i64, i128...).
+/// It provides operation similar to RUST operators for integer primitive types (i32, i64, i128...).
 ///
-//TODO: #[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BigInteger {
     data: MpzStruct,
 }
@@ -38,7 +36,7 @@ impl BigInteger {
     ///
     pub fn one() -> Self {
         BigInteger {
-            data: MpzStruct::from_u32(1),
+            data: MpzStruct::from_u_word(1),
         }
     }
 
@@ -84,10 +82,10 @@ impl Display for BigInteger {
 
 /// Debug trait.
 impl Debug for BigInteger {
-    // Note: currently the standard library does not allow to reliably detect {:x?}, {:X?},  so
+    // Note: currently the standard library does not allow to reliably detect {:x?}, {:X?}, so
     // decimal is always assumed. If these formats are required, one should use {:x}, {:X}.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "", &self.data.to_string_radix(10))
+        Display::fmt(&self, f)
     }
 }
 
@@ -133,12 +131,14 @@ impl FromStr for BigInteger {
     }
 }
 
+// TODO: from_ixx()
+
 /// From trait for u128 type.
 ///
 impl From<u128> for BigInteger {
     fn from(value: u128) -> Self {
         BigInteger {
-            data: u128_to_big_unsigned(value),
+            data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
         }
     }
 }
@@ -147,8 +147,16 @@ impl From<u128> for BigInteger {
 ///
 impl From<u64> for BigInteger {
     fn from(value: u64) -> Self {
+        // Compiler will remove dead code if UWord is an u64.
+
+        if value > UWord::MAX {
+            return BigInteger {
+                data: MpzStruct::from_u_word(value),
+            };
+        }
+
         BigInteger {
-            data: u64_to_big_unsigned(value),
+            data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
         }
     }
 }
@@ -158,7 +166,7 @@ impl From<u64> for BigInteger {
 impl From<u32> for BigInteger {
     fn from(value: u32) -> Self {
         BigInteger {
-            data: u32_to_big_unsigned(value),
+            data: MpzStruct::from_u_word(value as UWord),
         }
     }
 }
@@ -168,7 +176,7 @@ impl From<u32> for BigInteger {
 impl From<u16> for BigInteger {
     fn from(value: u16) -> Self {
         BigInteger {
-            data: u16_to_big_unsigned(value),
+            data: MpzStruct::from_u_word(value as UWord),
         }
     }
 }
@@ -178,7 +186,7 @@ impl From<u16> for BigInteger {
 impl From<u8> for BigInteger {
     fn from(value: u8) -> Self {
         BigInteger {
-            data: u8_to_big_unsigned(value),
+            data: MpzStruct::from_u_word(value as UWord),
         }
     }
 }
@@ -188,7 +196,7 @@ impl From<u8> for BigInteger {
 impl From<bool> for BigInteger {
     fn from(value: bool) -> Self {
         BigInteger {
-            data: u32_to_big_unsigned(u32::from(value)),
+            data: MpzStruct::from_u_word(value as UWord),
         }
     }
 }
@@ -198,7 +206,7 @@ impl From<bool> for BigInteger {
 impl From<char> for BigInteger {
     fn from(value: char) -> Self {
         BigInteger {
-            data: u32_to_big_unsigned(u32::from(value)),
+            data: MpzStruct::from_u_word(value as UWord),
         }
     }
 }
@@ -210,99 +218,103 @@ impl From<char> for BigInteger {
 impl Add<&BigInteger> for BigInteger {
     type Output = BigInteger;
 
-    fn add(mut self, b: &BigInteger) -> Self::Output {
-        add_assign_internal(&mut self.data, &b.data);
-        self
+    fn add(self, b: &BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.add(&b.data),
+        }
     }
 }
 
-/// Addition trait for expression `a + b`. Variables `a`  and `b` are moved.
+/// Addition trait for expression `self + b`. Variables `self` and `b` are moved.
 ///
 impl Add<BigInteger> for BigInteger {
     type Output = BigInteger;
 
-    fn add(mut self, b: BigInteger) -> Self::Output {
-        add_assign_internal(&mut self.data, &b.data);
-        self
+    fn add(self, b: BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.add(&b.data),
+        }
     }
 }
 
-/// Addition trait for expression `&a + &b`.
+/// Addition trait for expression `&self + &b`.
 ///
 impl Add<&BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn add(self, b: &BigInteger) -> Self::Output {
         BigInteger {
-            data: add_internal(&self.data, &b.data),
+            data: self.data.add(&b.data),
         }
     }
 }
 
-/// Addition trait for expression `&a + b`. Variable `b` is moved.
+/// Addition trait for expression `&self + b`. Variable `b` is moved.
 ///
 impl Add<BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn add(self, b: BigInteger) -> Self::Output {
         BigInteger {
-            data: add_internal(&self.data, &b.data),
+            data: self.data.add(&b.data),
         }
     }
 }
 
-/// Addition assignment trait for expression `a += &b`.
+/// Addition assignment trait for expression `self += &b`.
 ///
 impl AddAssign<&BigInteger> for BigInteger {
     fn add_assign(&mut self, b: &BigInteger) {
-        add_assign_internal(&mut self.data, &b.data);
+        self.data.add_assign(&b.data);
     }
 }
 
 // Multiplication traits //////////////////////////////////////////////////////
 
-/// Multiplication trait for expression `a * &b`. Variable `a` is moved.
+/// Multiplication trait for expression `self * &b`. Variable `self` is moved.
 ///
 impl Mul<&BigInteger> for BigInteger {
     type Output = BigInteger;
 
-    fn mul(mut self, b: &BigInteger) -> Self::Output {
-        mul_assign_internal(&mut self.data, &b.data);
-        self
+    fn mul(self, b: &BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.mul(&b.data),
+        }
     }
 }
 
-/// Multiplication trait for expression `a * b`. Variables `a`  and `b` are moved.
+/// Multiplication trait for expression `self * b`. Variables `self`  and `b` are moved.
 ///
 impl Mul<BigInteger> for BigInteger {
     type Output = BigInteger;
 
-    fn mul(mut self, b: BigInteger) -> Self::Output {
-        mul_assign_internal(&mut self.data, &b.data);
-        self
+    fn mul(self, b: BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.mul(&b.data),
+        }
     }
 }
 
-/// Multiplication trait for expression `&a * &b`.
+/// Multiplication trait for expression `&self * &b`.
 ///
 impl Mul<&BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn mul(self, b: &BigInteger) -> Self::Output {
         BigInteger {
-            data: mul_internal(&self.data, &b.data),
+            data: self.data.mul(&b.data),
         }
     }
 }
 
-/// Multiplication trait for expression `&a * b`. Variable `b` is moved.
+/// Multiplication trait for expression `&self * b`. Variable `b` is moved.
 ///
 impl Mul<BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn mul(self, b: BigInteger) -> Self::Output {
         BigInteger {
-            data: mul_internal(&self.data, &b.data),
+            data: self.data.mul(&b.data),
         }
     }
 }
