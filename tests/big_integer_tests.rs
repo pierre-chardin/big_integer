@@ -462,7 +462,7 @@ fn sub() {
     assert_eq!(BigInteger::zero() - BigInteger::one(), BigInteger::from(-1));
     assert_eq!(BigInteger::one() - BigInteger::zero(), BigInteger::one());
 
-    // Values of each tupple: a, b, a-b
+    // Values of each tuple: a, b, a-b
     let test_data = [
         (
             "621345890643261974075405507145076862863904443",
@@ -510,7 +510,7 @@ fn mul() {
     assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
     assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
 
-    // Values of each tupple: a, b, a*b
+    // Values of each tuple: a, b, a*b
     let test_data = [
         (
             "94216502321054376443222300543223455",
@@ -561,5 +561,201 @@ fn mul() {
 
         d *= &BigInteger::zero();
         assert_eq!(&d, &BigInteger::zero());
+    }
+}
+
+#[test]
+fn div() {
+    assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
+    assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
+
+    // Values of each tuple: a, b, a/b
+    let test_data = [
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+        ),
+        (
+            "-720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "-7645388531954212345777324452245224",
+        ),
+        (
+            "4444444444444445678432298542000000000000000000000000000000",
+            "1000000000000000000000000000000",
+            "4444444444444445678432298542",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let q1 = BigInteger::from_str(data.2).unwrap();
+
+        assert_eq!(&a / &b, q1);
+        assert_eq!(&a / b.clone(), q1);
+        assert_eq!(a.clone() / &b, q1);
+        assert_eq!(a.clone() / b.clone(), q1);
+
+        // let c = &a * BigInteger::zero();
+        // assert_eq!(c, BigInteger::zero());
+        // assert_eq!(BigInteger::zero() * &b, BigInteger::zero());
+
+        assert_eq!(&a / BigInteger::one(), a);
+        assert_eq!(BigInteger::one() / &b, BigInteger::zero());
+
+        let mut d = a.clone();
+        d /= &b;
+        assert_eq!(d, q1);
+
+        d /= &BigInteger::one();
+        assert_eq!(d, q1);
+
+        // d /= &BigInteger::zero();
+        // assert_eq!(&d, &BigInteger::zero());
+    }
+}
+
+#[test]
+fn rem() {
+    assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
+    assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
+
+    // Values of each tuple: a, b, a/b
+    let test_data = [
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "94216502321054376443222300543223455",
+            "0",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528929",
+            "94216502321054376443222300543223455",
+            "9",
+        ),
+        (
+            "-720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "0",
+        ),
+        (
+            "-720321766366226559177076379734170052180946354147405194899833088528927",
+            "-94216502321054376443222300543223455",
+            "-7",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "0",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528935",
+            "-94216502321054376443222300543223455",
+            "15",
+        ),
+        (
+            "4444444444444445678432298542000000000000000000000000000000",
+            "1000000000000000000000000000000",
+            "0",
+        ),
+        (
+            "4444444444444445678432298542000000000000000000000000054371",
+            "1000000000000000000000000000000",
+            "54371",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let r1 = BigInteger::from_str(data.2).unwrap();
+
+        assert_eq!(&a % &b, r1);
+        assert_eq!(&a % b.clone(), r1);
+        assert_eq!(a.clone() % &b, r1);
+        assert_eq!(a.clone() % b.clone(), r1);
+
+        assert_eq!(&a % BigInteger::one(), BigInteger::zero());
+        assert_eq!(BigInteger::one() % &b, BigInteger::one());
+
+        let mut d = a.clone();
+        d %= &b;
+        assert_eq!(d, r1);
+
+        d %= &BigInteger::one();
+        assert_eq!(d, BigInteger::zero());
+    }
+}
+
+#[test]
+fn div_rem() {
+    assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
+    assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
+
+    // Values of each tuple: a, b, a/b, a%b
+    let test_data = [
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "0",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528940",
+            "94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "20",
+        ),
+        (
+            "-720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "0",
+        ),
+        (
+            "-720321766366226559177076379734170052180946354147405194899833088528955",
+            "-94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "-35",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+            "-94216502321054376443222300543223455",
+            "-7645388531954212345777324452245224",
+            "0",
+        ),
+        (
+            "720321766366226559177076379734170052180946354147405194899833088528922",
+            "-94216502321054376443222300543223455",
+            "-7645388531954212345777324452245224",
+            "2",
+        ),
+        (
+            "4444444444444445678432298542000000000000000000000000123456",
+            "1000000000000000000000000000000",
+            "4444444444444445678432298542",
+            "123456",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let q_expected = BigInteger::from_str(data.2).unwrap();
+        let r_expected = BigInteger::from_str(data.3).unwrap();
+
+        let (q, r) = a.div_rem(&b);
+
+        assert_eq!(q, q_expected);
+        assert_eq!(r, r_expected);
     }
 }

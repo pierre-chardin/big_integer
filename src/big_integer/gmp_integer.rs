@@ -45,12 +45,15 @@ const DEFAULT_BYTE_ORDER: c_int = 1;
 #[cfg(target_endian = "little")]
 const DEFAULT_BYTE_ORDER: c_int = -1;
 
+const DIVIDE_BY_ZERO_ERROR: &str = "attempt to divide by zero";
+const REMAINDER_OF_ZERO_ERROR: &str = "attempt to calculate the remainder with a divisor of zero";
+
 impl MpzStruct {
     /// Creates a GMP integer equal to 0.
     ///
-    pub(super) fn new() -> MpzStruct {
+    pub(super) fn new() -> Self {
         unsafe {
-            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            let mut v = mem::MaybeUninit::<Self>::uninit();
             __gmpz_init(v.as_mut_ptr());
             v.assume_init()
         }
@@ -59,9 +62,9 @@ impl MpzStruct {
     ///  Converts an unsigned integer value to a GMP integer.
     ///
     #[inline]
-    pub(super) fn from_u_word(value: UWord) -> MpzStruct {
+    pub(super) fn from_u_word(value: UWord) -> Self {
         unsafe {
-            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            let mut v = mem::MaybeUninit::<Self>::uninit();
             __gmpz_init_set_ui(v.as_mut_ptr(), value);
             v.assume_init()
         }
@@ -70,9 +73,9 @@ impl MpzStruct {
     ///  Converts a signed integer value to a GMP integer.
     ///
     #[inline]
-    pub(super) fn from_s_word(value: SWord) -> MpzStruct {
+    pub(super) fn from_s_word(value: SWord) -> Self {
         unsafe {
-            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            let mut v = mem::MaybeUninit::<Self>::uninit();
             __gmpz_init_set_si(v.as_mut_ptr(), value);
             v.assume_init()
         }
@@ -86,10 +89,10 @@ impl MpzStruct {
         sign_is_minus: bool,
         positive_value: &[u8],
         byte_order: ByteOrder,
-    ) -> MpzStruct {
-        let mut bint: MpzStruct;
+    ) -> Self {
+        let mut bint: Self;
         unsafe {
-            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            let mut v = mem::MaybeUninit::<Self>::uninit();
             __gmpz_init(v.as_mut_ptr());
             bint = v.assume_init();
         }
@@ -120,8 +123,29 @@ impl MpzStruct {
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub(super) fn from_str_radix(src: &str, radix: u32) -> Option<MpzStruct> {
+    pub(super) fn from_str_radix(src: &str, radix: u32) -> Option<Self> {
         from_str_radix_internal(src, to_gmp_radix(radix))
+    }
+
+    /// Returns `true` if `self` equals zero.
+    ///
+    #[inline]
+    pub(super) fn is_zero(&self) -> bool {
+        self._mp_size == 0
+    }
+
+    /// Returns `true` if `self` is strictly greater than zero.
+    ///
+    #[inline]
+    pub(super) fn is_positive(&self) -> bool {
+        self._mp_size > 0
+    }
+
+    /// Returns `true` if `self` is strictly less than zero.
+    ///
+    #[inline]
+    pub(super) fn is_negative(&self) -> bool {
+        self._mp_size < 0
     }
 
     /// Returns the GMP integer converted to a lowercase string for the given `radix` and a boolean
@@ -167,7 +191,7 @@ impl MpzStruct {
     ///
     #[inline]
     pub(super) fn neg(&self) -> Self {
-        let mut result = MpzStruct::new();
+        let mut result = Self::new();
         unsafe {
             __gmpz_neg(&mut result, self);
         }
@@ -178,7 +202,7 @@ impl MpzStruct {
     ///
     #[inline]
     pub(super) fn add(&self, op: &Self) -> Self {
-        let mut result = MpzStruct::new();
+        let mut result = Self::new();
         unsafe {
             __gmpz_add(&mut result, self, op);
         }
@@ -198,7 +222,7 @@ impl MpzStruct {
     ///
     #[inline]
     pub fn sub(&self, op: &Self) -> Self {
-        let mut result = MpzStruct::new();
+        let mut result = Self::new();
         unsafe {
             __gmpz_sub(&mut result, self, op);
         }
@@ -218,7 +242,7 @@ impl MpzStruct {
     ///
     #[inline]
     pub(super) fn mul(&self, op: &Self) -> Self {
-        let mut result = MpzStruct::new();
+        let mut result = Self::new();
         unsafe {
             __gmpz_mul(&mut result, self, op);
         }
@@ -232,6 +256,82 @@ impl MpzStruct {
         unsafe {
             __gmpz_mul(self, self, op);
         }
+    }
+
+    ///  Returns the quotient of GMP integer / `op`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a `op` is zero.
+
+    #[inline]
+    pub(super) fn div(&self, op: &Self) -> Self {
+        if op.is_zero() {
+            panic!("{DIVIDE_BY_ZERO_ERROR}")
+        }
+
+        let mut result = Self::new();
+        unsafe {
+            __gmpz_tdiv_q(&mut result, self, op);
+        }
+        result
+    }
+
+    ///  Divides the GMP integer by op and keeps the quotient.
+    ///
+    #[inline]
+    pub(super) fn div_assign(&mut self, op: &Self) {
+        if op.is_zero() {
+            panic!("{DIVIDE_BY_ZERO_ERROR}")
+        }
+
+        unsafe {
+            __gmpz_tdiv_q(self, self, op);
+        }
+    }
+
+    ///  Returns the remainder of GMP integer / `op`.
+    ///
+    #[inline]
+    pub(super) fn rem(&self, op: &Self) -> Self {
+        if op.is_zero() {
+            panic!("{REMAINDER_OF_ZERO_ERROR}")
+        }
+
+        let mut result = Self::new();
+        unsafe {
+            __gmpz_tdiv_r(&mut result, self, op);
+        }
+        result
+    }
+
+    ///  Divides the GMP integer by op and keepq the remainder.
+    ///
+    #[inline]
+    pub(super) fn rem_assign(&mut self, op: &Self) {
+        if op.is_zero() {
+            panic!("{REMAINDER_OF_ZERO_ERROR}")
+        }
+
+        unsafe {
+            __gmpz_tdiv_r(self, self, op);
+        }
+    }
+
+    ///  Returns the quotient and remainder of GMP integer / `op`.
+    ///
+    #[inline]
+    pub(super) fn div_rem(&self, op: &Self) -> (Self, Self) {
+        if op.is_zero() {
+            panic!("{DIVIDE_BY_ZERO_ERROR}")
+        }
+
+        let mut quotient = Self::new();
+        let mut remainder = Self::new();
+        unsafe {
+            __gmpz_tdiv_qr(&mut quotient, &mut remainder, self, op);
+        }
+        (quotient, remainder)
     }
 }
 
@@ -251,7 +351,7 @@ impl Drop for MpzStruct {
 impl Clone for MpzStruct {
     fn clone(&self) -> Self {
         unsafe {
-            let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
+            let mut v = mem::MaybeUninit::<Self>::uninit();
             __gmpz_init_set(v.as_mut_ptr(), self);
             v.assume_init()
         }
@@ -362,9 +462,15 @@ unsafe extern "C" {
     // fn __gmpz_addmul_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
     fn __gmpz_neg(rop: *mut MpzStruct, op: *const MpzStruct);
     // fn __gmpz_abs(rop: *mut MpzStruct, op: *const MpzStruct);
-    // fn __gmpz_tdiv_q(q: *mut MpzStruct, n: *const MpzStruct, d: *const MpzStruct);
-    // fn __gmpz_tdiv_r(r: *mut MpzStruct, n: *const MpzStruct, d: *const MpzStruct);
-    // fn __gmpz_tdiv_q_ui(q: *mut MpzStruct, n: *const MpzStruct, d: c_ulong);
+    fn __gmpz_tdiv_q(q: *mut MpzStruct, n: *const MpzStruct, d: *const MpzStruct);
+    fn __gmpz_tdiv_r(r: *mut MpzStruct, n: *const MpzStruct, d: *const MpzStruct);
+    fn __gmpz_tdiv_qr(
+        q: *mut MpzStruct,
+        r: *mut MpzStruct,
+        n: *const MpzStruct,
+        d: *const MpzStruct,
+    );
+    //fn __gmpz_tdiv_q_ui(q: *mut MpzStruct, n: *const MpzStruct, d: c_ulong);
     // fn __gmpz_tdiv_r_ui(r: *mut MpzStruct, n: *const MpzStruct, d: c_ulong);
     // fn __gmpz_fdiv_r(r: *mut MpzStruct, n: *const MpzStruct, d: *const MpzStruct);
     // fn __gmpz_fdiv_q_2exp(q: *mut MpzStruct, n: *const MpzStruct, b: c_ulong);

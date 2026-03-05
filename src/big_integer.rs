@@ -6,7 +6,9 @@ pub mod error;
 mod gmp_integer;
 
 use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
@@ -28,7 +30,7 @@ impl BigInteger {
     ///
     #[inline]
     pub fn zero() -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::new(),
         }
     }
@@ -37,7 +39,7 @@ impl BigInteger {
     ///
     #[inline]
     pub fn one() -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(1),
         }
     }
@@ -49,9 +51,9 @@ impl BigInteger {
     ///
     /// This function panics if `radix` is not in the range from 2 to 36.
     ///
-    pub fn from_str_radix(src: &str, radix: u32) -> Result<BigInteger, ParseBigIntegerError> {
+    pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseBigIntegerError> {
         if let Some(data) = MpzStruct::from_str_radix(src, radix) {
-            return Ok(BigInteger { data });
+            return Ok(Self { data });
         }
 
         if src.is_empty() {
@@ -63,13 +65,20 @@ impl BigInteger {
             kind: BigIntegerErrorKind::InvalidDigit,
         })
     }
+
+    ///Returns the quotient and remainder of `self/other`.
+    ///
+    pub fn div_rem(&self, other: &BigInteger) -> (BigInteger, BigInteger) {
+        let (quotient, remainer) = self.data.div_rem(&other.data);
+        (Self { data: quotient }, Self { data: remainer })
+    }
 }
 
 /// Default value is zero.
 impl Default for BigInteger {
     #[inline]
     fn default() -> Self {
-        BigInteger::zero()
+        Self::zero()
     }
 }
 
@@ -149,19 +158,17 @@ impl FromStr for BigInteger {
     type Err = ParseBigIntegerError;
 
     #[inline]
-    fn from_str(src: &str) -> Result<BigInteger, ParseBigIntegerError> {
+    fn from_str(src: &str) -> Result<Self, ParseBigIntegerError> {
         Self::from_str_radix(src, 10)
     }
 }
-
-// TODO: from_ixx()
 
 /// From trait for u128 type.
 ///
 impl From<u128> for BigInteger {
     #[inline]
     fn from(value: u128) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
         }
     }
@@ -177,7 +184,7 @@ impl From<i128> for BigInteger {
             (-value as u128, true)
         };
 
-        BigInteger {
+        Self {
             data: MpzStruct::from_bytes(
                 sign_is_minus,
                 &u_value.to_ne_bytes(),
@@ -194,12 +201,12 @@ impl From<u64> for BigInteger {
         // Compiler will remove dead code if UWord is an u64.
 
         if value <= UWord::MAX {
-            return BigInteger {
+            return Self {
                 data: MpzStruct::from_u_word(value as UWord),
             };
         }
 
-        BigInteger {
+        Self {
             data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
         }
     }
@@ -212,7 +219,7 @@ impl From<i64> for BigInteger {
         // Compiler will remove dead code if SWord is an i64.
 
         if (value >= SWord::MIN) && (value <= SWord::MAX) {
-            return BigInteger {
+            return Self {
                 data: MpzStruct::from_s_word(value as SWord),
             };
         }
@@ -223,7 +230,7 @@ impl From<i64> for BigInteger {
             (-value as u64, true)
         };
 
-        BigInteger {
+        Self {
             data: MpzStruct::from_bytes(
                 sign_is_minus,
                 &u_value.to_ne_bytes(),
@@ -238,7 +245,7 @@ impl From<i64> for BigInteger {
 impl From<u32> for BigInteger {
     #[inline]
     fn from(value: u32) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(value as UWord),
         }
     }
@@ -249,7 +256,7 @@ impl From<u32> for BigInteger {
 impl From<i32> for BigInteger {
     #[inline]
     fn from(value: i32) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_s_word(value as SWord),
         }
     }
@@ -260,7 +267,7 @@ impl From<i32> for BigInteger {
 impl From<u16> for BigInteger {
     #[inline]
     fn from(value: u16) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(value as UWord),
         }
     }
@@ -271,7 +278,7 @@ impl From<u16> for BigInteger {
 impl From<i16> for BigInteger {
     #[inline]
     fn from(value: i16) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_s_word(value as SWord),
         }
     }
@@ -282,7 +289,7 @@ impl From<i16> for BigInteger {
 impl From<u8> for BigInteger {
     #[inline]
     fn from(value: u8) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(value as UWord),
         }
     }
@@ -293,7 +300,7 @@ impl From<u8> for BigInteger {
 impl From<i8> for BigInteger {
     #[inline]
     fn from(value: i8) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_s_word(value as SWord),
         }
     }
@@ -304,7 +311,7 @@ impl From<i8> for BigInteger {
 impl From<bool> for BigInteger {
     #[inline]
     fn from(value: bool) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(value as UWord),
         }
     }
@@ -315,7 +322,7 @@ impl From<bool> for BigInteger {
 impl From<char> for BigInteger {
     #[inline]
     fn from(value: char) -> Self {
-        BigInteger {
+        Self {
             data: MpzStruct::from_u_word(value as UWord),
         }
     }
@@ -328,7 +335,7 @@ impl Neg for &BigInteger {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.neg(),
         }
     }
@@ -343,7 +350,7 @@ impl Add<&BigInteger> for BigInteger {
 
     #[inline]
     fn add(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.add(&b.data),
         }
     }
@@ -356,7 +363,7 @@ impl Add<BigInteger> for BigInteger {
 
     #[inline]
     fn add(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.add(&b.data),
         }
     }
@@ -369,7 +376,7 @@ impl Add<&BigInteger> for &BigInteger {
 
     #[inline]
     fn add(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.add(&b.data),
         }
     }
@@ -382,7 +389,7 @@ impl Add<BigInteger> for &BigInteger {
 
     #[inline]
     fn add(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.add(&b.data),
         }
     }
@@ -405,7 +412,7 @@ impl Sub<&BigInteger> for BigInteger {
     type Output = BigInteger;
 
     fn sub(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.sub(&b.data),
         }
     }
@@ -417,7 +424,7 @@ impl Sub<BigInteger> for BigInteger {
     type Output = BigInteger;
 
     fn sub(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.sub(&b.data),
         }
     }
@@ -429,7 +436,7 @@ impl Sub<&BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn sub(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.sub(&b.data),
         }
     }
@@ -441,7 +448,7 @@ impl Sub<BigInteger> for &BigInteger {
     type Output = BigInteger;
 
     fn sub(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.sub(&b.data),
         }
     }
@@ -464,7 +471,7 @@ impl Mul<&BigInteger> for BigInteger {
 
     #[inline]
     fn mul(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.mul(&b.data),
         }
     }
@@ -477,7 +484,7 @@ impl Mul<BigInteger> for BigInteger {
 
     #[inline]
     fn mul(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.mul(&b.data),
         }
     }
@@ -490,7 +497,7 @@ impl Mul<&BigInteger> for &BigInteger {
 
     #[inline]
     fn mul(self, b: &BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.mul(&b.data),
         }
     }
@@ -503,7 +510,7 @@ impl Mul<BigInteger> for &BigInteger {
 
     #[inline]
     fn mul(self, b: BigInteger) -> Self::Output {
-        BigInteger {
+        Self::Output {
             data: self.data.mul(&b.data),
         }
     }
@@ -515,5 +522,131 @@ impl MulAssign<&BigInteger> for BigInteger {
     #[inline]
     fn mul_assign(&mut self, b: &BigInteger) {
         self.data.mul_assign(&b.data);
+    }
+}
+
+// Division traits ////////////////////////////////////////////////////////////
+
+/// Division trait for expression `self / &b`. Variable `self` is moved.
+///
+impl Div<&BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn div(self, b: &BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.div(&b.data),
+        }
+    }
+}
+
+/// Division trait for expression `self / b`. Variables `self`  and `b` are moved.
+///
+impl Div<BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn div(self, b: BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.div(&b.data),
+        }
+    }
+}
+
+/// Division trait for expression `&self / &b`.
+///
+impl Div<&BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn div(self, b: &BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.div(&b.data),
+        }
+    }
+}
+
+/// Division trait for expression `&self / b`. Variable `b` is moved.
+///
+impl Div<BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn div(self, b: BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.div(&b.data),
+        }
+    }
+}
+
+/// Division assignment trait for expression `self /= &b`.
+///
+impl DivAssign<&BigInteger> for BigInteger {
+    #[inline]
+    fn div_assign(&mut self, b: &BigInteger) {
+        self.data.div_assign(&b.data);
+    }
+}
+
+// Remainder traits ////////////////////////////////////////////////////////////
+
+/// Remainder trait for expression `self % &b`. Variable `self` is moved.
+///
+impl Rem<&BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn rem(self, b: &BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.rem(&b.data),
+        }
+    }
+}
+
+/// Remainder trait for expression `self % b`. Variables `self`  and `b` are moved.
+///
+impl Rem<BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn rem(self, b: BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.rem(&b.data),
+        }
+    }
+}
+
+/// Remainder trait for expression `&self % &b`.
+///
+impl Rem<&BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn rem(self, b: &BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.rem(&b.data),
+        }
+    }
+}
+
+/// Remainder trait for expression `&self % b`. Variable `b` is moved.
+///
+impl Rem<BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn rem(self, b: BigInteger) -> Self::Output {
+        Self::Output {
+            data: self.data.rem(&b.data),
+        }
+    }
+}
+
+/// Remainder assignment trait for expression `self /= &b`.
+///
+impl RemAssign<&BigInteger> for BigInteger {
+    #[inline]
+    fn rem_assign(&mut self, b: &BigInteger) {
+        self.data.rem_assign(&b.data);
     }
 }
