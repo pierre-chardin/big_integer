@@ -366,6 +366,8 @@ impl PartialEq for MpzStruct {
     }
 }
 
+impl Eq for MpzStruct {}
+
 /// Returns the radix safely cast to GMP.
 /// Panics if radix is invalid.
 ///
