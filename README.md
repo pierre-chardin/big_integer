@@ -27,7 +27,6 @@ brew install gmp
 
 ## Associated functions ##
 
-* Operators `>`, `>=`, `<`, `<=` and associated methods.
 * Operators `|`, `&`, `^` and associated methods.
 * Operators `<<`, `>>` and associated methods.
 * `to_be_bytes()`,  `to_le_bytes()`, `to_ne_bytes()`.
