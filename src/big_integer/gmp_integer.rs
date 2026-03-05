@@ -20,11 +20,11 @@ pub(super) struct MpzStruct {
 /// An unsigned integer value. Depending on platform, may be u32 or u64.
 pub type UWord = c_ulong;
 /// A signed integer value. Depending on platform, may be i32 or i64.
-pub type SWord = c_long;
+pub(super) type SWord = c_long;
 
 /// Byte order to use for byte slices.
 ///
-pub enum ByteOrder {
+pub(super) enum ByteOrder {
     LittleEndian,
     NativeEndian,
     BigEndian,
@@ -48,7 +48,7 @@ const DEFAULT_BYTE_ORDER: c_int = -1;
 impl MpzStruct {
     /// Creates a GMP integer equal to 0.
     ///
-    pub fn new() -> MpzStruct {
+    pub(super) fn new() -> MpzStruct {
         unsafe {
             let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
             __gmpz_init(v.as_mut_ptr());
@@ -59,7 +59,7 @@ impl MpzStruct {
     ///  Converts an unsigned integer value to a GMP integer.
     ///
     #[inline]
-    pub fn from_u_word(value: UWord) -> MpzStruct {
+    pub(super) fn from_u_word(value: UWord) -> MpzStruct {
         unsafe {
             let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
             __gmpz_init_set_ui(v.as_mut_ptr(), value);
@@ -70,7 +70,7 @@ impl MpzStruct {
     ///  Converts a signed integer value to a GMP integer.
     ///
     #[inline]
-    pub fn from_s_word(value: SWord) -> MpzStruct {
+    pub(super) fn from_s_word(value: SWord) -> MpzStruct {
         unsafe {
             let mut v = mem::MaybeUninit::<MpzStruct>::uninit();
             __gmpz_init_set_si(v.as_mut_ptr(), value);
@@ -82,7 +82,7 @@ impl MpzStruct {
     /// first. The byte slice `positive_value`is always considered representing a positive integer.
     /// To get a negative GMP integer, set `sign_is_minus` to `true`.
     ///
-    pub fn from_bytes(
+    pub(super) fn from_bytes(
         sign_is_minus: bool,
         positive_value: &[u8],
         byte_order: ByteOrder,
@@ -120,7 +120,7 @@ impl MpzStruct {
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn from_str_radix(src: &str, radix: u32) -> Option<MpzStruct> {
+    pub(super) fn from_str_radix(src: &str, radix: u32) -> Option<MpzStruct> {
         from_str_radix_internal(src, to_gmp_radix(radix))
     }
 
@@ -134,7 +134,7 @@ impl MpzStruct {
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_lowercase_radix(&self, radix: u32) -> (String, bool) {
+    pub(super) fn to_string_lowercase_radix(&self, radix: u32) -> (String, bool) {
         to_string_radix_internal(self, to_gmp_radix(radix))
     }
 
@@ -146,7 +146,7 @@ impl MpzStruct {
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_uppercase_radix(&self, radix: u32) -> (String, bool) {
+    pub(super) fn to_string_uppercase_radix(&self, radix: u32) -> (String, bool) {
         let (str, sign) = to_string_radix_internal(self, to_gmp_radix(radix));
         (str.to_uppercase(), sign)
     }
@@ -159,14 +159,25 @@ impl MpzStruct {
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_radix(&self, radix: u32) -> (String, bool) {
+    pub(super) fn to_string_radix(&self, radix: u32) -> (String, bool) {
         to_string_radix_internal(self, to_gmp_radix(radix))
+    }
+
+    ///  Returns the GMP integer * -1.
+    ///
+    #[inline]
+    pub(super) fn neg(&self) -> Self {
+        let mut result = MpzStruct::new();
+        unsafe {
+            __gmpz_neg(&mut result, self);
+        }
+        result
     }
 
     ///  Returns the GMP integer + `op`.
     ///
     #[inline]
-    pub fn add(&self, op: &Self) -> Self {
+    pub(super) fn add(&self, op: &Self) -> Self {
         let mut result = MpzStruct::new();
         unsafe {
             __gmpz_add(&mut result, self, op);
@@ -177,7 +188,7 @@ impl MpzStruct {
     ///  Adds `op` to the GMP integer.
     ///
     #[inline]
-    pub fn add_assign(&mut self, op: &Self) {
+    pub(super) fn add_assign(&mut self, op: &Self) {
         unsafe {
             __gmpz_add(self, self, op);
         }
@@ -186,7 +197,7 @@ impl MpzStruct {
     ///  Returns the GMP integer * `op`.
     ///
     #[inline]
-    pub fn mul(&self, op: &Self) -> Self {
+    pub(super) fn mul(&self, op: &Self) -> Self {
         let mut result = MpzStruct::new();
         unsafe {
             __gmpz_mul(&mut result, self, op);
@@ -197,7 +208,7 @@ impl MpzStruct {
     ///  Multiplies the GMP integer by op.
     ///
     #[inline]
-    pub fn mul_assign(&mut self, op: &Self) {
+    pub(super) fn mul_assign(&mut self, op: &Self) {
         unsafe {
             __gmpz_mul(self, self, op);
         }

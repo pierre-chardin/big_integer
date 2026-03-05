@@ -289,11 +289,9 @@ fn from_str_radix() {
         let value_big_integer = BigInteger::from_str_radix(value_string, radix).unwrap();
         assert_eq!(to_str(&value_big_integer), value_string.to_uppercase());
 
-        let negative_value_big_integer;
+        let negative_value_big_integer = -&value_big_integer;
         {
             let negative_value_string = String::from_str("-").unwrap() + value_string;
-            negative_value_big_integer =
-                BigInteger::from_str_radix(&negative_value_string, radix).unwrap();
             assert_eq!(
                 to_str(&negative_value_big_integer),
                 negative_value_string.to_uppercase()
@@ -408,7 +406,7 @@ fn from_str_zero() {
 }
 
 #[test]
-fn add2() {
+fn add() {
     assert_eq!(BigInteger::zero() + BigInteger::zero(), BigInteger::zero());
     assert_eq!(BigInteger::zero() + BigInteger::one(), BigInteger::one());
     assert_eq!(BigInteger::one() + BigInteger::zero(), BigInteger::one());

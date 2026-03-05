@@ -6,7 +6,7 @@ pub mod error;
 mod gmp_integer;
 
 use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
-use std::ops::{Add, AddAssign, Mul, MulAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
@@ -26,6 +26,7 @@ pub struct BigInteger {
 impl BigInteger {
     /// Returns value `0`.
     ///
+    #[inline]
     pub fn zero() -> Self {
         BigInteger {
             data: MpzStruct::new(),
@@ -34,6 +35,7 @@ impl BigInteger {
 
     /// Returns value `1`.
     ///
+    #[inline]
     pub fn one() -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(1),
@@ -65,6 +67,7 @@ impl BigInteger {
 
 /// Default value is zero.
 impl Default for BigInteger {
+    #[inline]
     fn default() -> Self {
         BigInteger::zero()
     }
@@ -75,6 +78,7 @@ impl Default for BigInteger {
 /// Display trait. Automatically implements to_string().
 ///
 impl Display for BigInteger {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (str, is_nonnegative) = self.data.to_string_radix(10);
         f.pad_integral(is_nonnegative, "", &str)
@@ -85,6 +89,7 @@ impl Display for BigInteger {
 impl Debug for BigInteger {
     // Note: currently the standard library does not allow to reliably detect {:x?}, {:X?}, so
     // decimal is always assumed. If these formats are required, one should use {:x}, {:X}.
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self, f)
     }
@@ -95,6 +100,7 @@ impl Debug for BigInteger {
 /// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl LowerHex for BigInteger {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (str, is_nonnegative) = self.data.to_string_lowercase_radix(16);
         f.pad_integral(is_nonnegative, "0x", &str)
@@ -106,6 +112,7 @@ impl LowerHex for BigInteger {
 /// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl UpperHex for BigInteger {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (str, is_nonnegative) = self.data.to_string_uppercase_radix(16);
         f.pad_integral(is_nonnegative, "0x", &str)
@@ -117,6 +124,7 @@ impl UpperHex for BigInteger {
 /// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl Octal for BigInteger {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (str, is_nonnegative) = self.data.to_string_radix(8);
         f.pad_integral(is_nonnegative, "0o", &str)
@@ -128,6 +136,7 @@ impl Octal for BigInteger {
 /// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl Binary for BigInteger {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (str, is_nonnegative) = self.data.to_string_radix(2);
         f.pad_integral(is_nonnegative, "0b", &str)
@@ -139,6 +148,7 @@ impl Binary for BigInteger {
 impl FromStr for BigInteger {
     type Err = ParseBigIntegerError;
 
+    #[inline]
     fn from_str(src: &str) -> Result<BigInteger, ParseBigIntegerError> {
         Self::from_str_radix(src, 10)
     }
@@ -149,6 +159,7 @@ impl FromStr for BigInteger {
 /// From trait for u128 type.
 ///
 impl From<u128> for BigInteger {
+    #[inline]
     fn from(value: u128) -> Self {
         BigInteger {
             data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
@@ -225,6 +236,7 @@ impl From<i64> for BigInteger {
 /// From trait for u32 type.
 ///
 impl From<u32> for BigInteger {
+    #[inline]
     fn from(value: u32) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
@@ -235,6 +247,7 @@ impl From<u32> for BigInteger {
 /// From trait for i32 type.
 ///
 impl From<i32> for BigInteger {
+    #[inline]
     fn from(value: i32) -> Self {
         BigInteger {
             data: MpzStruct::from_s_word(value as SWord),
@@ -245,6 +258,7 @@ impl From<i32> for BigInteger {
 /// From trait for u16 type.
 ///
 impl From<u16> for BigInteger {
+    #[inline]
     fn from(value: u16) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
@@ -255,6 +269,7 @@ impl From<u16> for BigInteger {
 /// From trait for i16 type.
 ///
 impl From<i16> for BigInteger {
+    #[inline]
     fn from(value: i16) -> Self {
         BigInteger {
             data: MpzStruct::from_s_word(value as SWord),
@@ -265,6 +280,7 @@ impl From<i16> for BigInteger {
 /// From trait for u8 type.
 ///
 impl From<u8> for BigInteger {
+    #[inline]
     fn from(value: u8) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
@@ -275,6 +291,7 @@ impl From<u8> for BigInteger {
 /// From trait for i8 type.
 ///
 impl From<i8> for BigInteger {
+    #[inline]
     fn from(value: i8) -> Self {
         BigInteger {
             data: MpzStruct::from_s_word(value as SWord),
@@ -285,6 +302,7 @@ impl From<i8> for BigInteger {
 /// From trait for bool type.
 ///
 impl From<bool> for BigInteger {
+    #[inline]
     fn from(value: bool) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
@@ -295,9 +313,23 @@ impl From<bool> for BigInteger {
 /// From trait for char type.
 ///
 impl From<char> for BigInteger {
+    #[inline]
     fn from(value: char) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
+        }
+    }
+}
+
+/// Negation trait for expression `-&a`.
+///
+impl Neg for &BigInteger {
+    type Output = BigInteger;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        BigInteger {
+            data: self.data.neg(),
         }
     }
 }
@@ -309,6 +341,7 @@ impl From<char> for BigInteger {
 impl Add<&BigInteger> for BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn add(self, b: &BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.add(&b.data),
@@ -321,6 +354,7 @@ impl Add<&BigInteger> for BigInteger {
 impl Add<BigInteger> for BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn add(self, b: BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.add(&b.data),
@@ -333,6 +367,7 @@ impl Add<BigInteger> for BigInteger {
 impl Add<&BigInteger> for &BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn add(self, b: &BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.add(&b.data),
@@ -345,6 +380,7 @@ impl Add<&BigInteger> for &BigInteger {
 impl Add<BigInteger> for &BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn add(self, b: BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.add(&b.data),
@@ -355,6 +391,7 @@ impl Add<BigInteger> for &BigInteger {
 /// Addition assignment trait for expression `self += &b`.
 ///
 impl AddAssign<&BigInteger> for BigInteger {
+    #[inline]
     fn add_assign(&mut self, b: &BigInteger) {
         self.data.add_assign(&b.data);
     }
@@ -367,6 +404,7 @@ impl AddAssign<&BigInteger> for BigInteger {
 impl Mul<&BigInteger> for BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn mul(self, b: &BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.mul(&b.data),
@@ -379,6 +417,7 @@ impl Mul<&BigInteger> for BigInteger {
 impl Mul<BigInteger> for BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn mul(self, b: BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.mul(&b.data),
@@ -391,6 +430,7 @@ impl Mul<BigInteger> for BigInteger {
 impl Mul<&BigInteger> for &BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn mul(self, b: &BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.mul(&b.data),
@@ -403,6 +443,7 @@ impl Mul<&BigInteger> for &BigInteger {
 impl Mul<BigInteger> for &BigInteger {
     type Output = BigInteger;
 
+    #[inline]
     fn mul(self, b: BigInteger) -> Self::Output {
         BigInteger {
             data: self.data.mul(&b.data),
@@ -413,6 +454,7 @@ impl Mul<BigInteger> for &BigInteger {
 /// Multiplication assignment trait for expression `self *= &b`.
 ///
 impl MulAssign<&BigInteger> for BigInteger {
+    #[inline]
     fn mul_assign(&mut self, b: &BigInteger) {
         self.data.mul_assign(&b.data);
     }
