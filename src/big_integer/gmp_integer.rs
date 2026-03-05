@@ -320,7 +320,7 @@ unsafe extern "C" {
     // fn __gmpz_cmp_ui(op1: *const MpzStruct, op2: c_ulong) -> c_int;
     fn __gmpz_add(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
     // fn __gmpz_add_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
-    // fn __gmpz_sub(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
+    fn __gmpz_sub(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);
     // fn __gmpz_sub_ui(rop: *mut MpzStruct, op1: *const MpzStruct, op2: c_ulong);
     // fn __gmpz_ui_sub(rop: *mut MpzStruct, op1: c_ulong, op2: *const MpzStruct);
     fn __gmpz_mul(rop: *mut MpzStruct, op1: *const MpzStruct, op2: *const MpzStruct);

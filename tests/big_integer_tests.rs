@@ -465,7 +465,7 @@ fn add_assign() {
         )
         .unwrap();
 
-        let mut a = BigInteger::from_str_radix(
+        let a = BigInteger::from_str_radix(
             "-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA",
             16,
         )
@@ -567,5 +567,15 @@ fn mul() {
 
         assert_eq!(&a * BigInteger::one(), a);
         assert_eq!(BigInteger::one() * &b, b);
+
+        let mut d = a.clone();
+        d *= &b;
+        assert_eq!(d, p1);
+
+        d *= &BigInteger::one();
+        assert_eq!(d, p1);
+
+        d *= &BigInteger::zero();
+        assert_eq!(&d, &BigInteger::zero());
     }
 }

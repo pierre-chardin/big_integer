@@ -6,7 +6,7 @@ pub mod error;
 mod gmp_integer;
 
 use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
-use std::ops::{Add, AddAssign, Mul};
+use std::ops::{Add, AddAssign, Mul, MulAssign};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
@@ -407,5 +407,13 @@ impl Mul<BigInteger> for &BigInteger {
         BigInteger {
             data: self.data.mul(&b.data),
         }
+    }
+}
+
+/// Multiplication assignment trait for expression `self *= &b`.
+///
+impl MulAssign<&BigInteger> for BigInteger {
+    fn mul_assign(&mut self, b: &BigInteger) {
+        self.data.mul_assign(&b.data);
     }
 }
