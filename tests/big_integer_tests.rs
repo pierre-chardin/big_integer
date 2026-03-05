@@ -289,9 +289,11 @@ fn from_str_radix() {
         let value_big_integer = BigInteger::from_str_radix(value_string, radix).unwrap();
         assert_eq!(to_str(&value_big_integer), value_string.to_uppercase());
 
-        let negative_value_big_integer = -&value_big_integer;
+        let negative_value_big_integer;
         {
             let negative_value_string = String::from_str("-").unwrap() + value_string;
+            negative_value_big_integer =
+                BigInteger::from_str_radix(&negative_value_string, radix).unwrap();
             assert_eq!(
                 to_str(&negative_value_big_integer),
                 negative_value_string.to_uppercase()
@@ -411,7 +413,7 @@ fn add() {
     assert_eq!(BigInteger::zero() + BigInteger::one(), BigInteger::one());
     assert_eq!(BigInteger::one() + BigInteger::zero(), BigInteger::one());
 
-    // Values of each tupple: a, b, a*b
+    // Values of each tuple: a, b, a+b
     let test_data = [
         (
             "621345890643261965432186543113853297441904443",
@@ -450,6 +452,55 @@ fn add() {
         assert_eq!(d, s1);
 
         d += &BigInteger::zero();
+        assert_eq!(&d, &s1);
+    }
+}
+
+#[test]
+fn sub() {
+    assert_eq!(BigInteger::zero() - BigInteger::zero(), BigInteger::zero());
+    assert_eq!(BigInteger::zero() - BigInteger::one(), BigInteger::from(-1));
+    assert_eq!(BigInteger::one() - BigInteger::zero(), BigInteger::one());
+
+    // Values of each tupple: a, b, a-b
+    let test_data = [
+        (
+            "621345890643261974075405507145076862863904443",
+            "621345890643261965432186543113853297441904443",
+            "8643218964031223565422000000",
+        ),
+        (
+            "-621345890643261974075405507145076862863904443",
+            "-621345890643261965432186543113853297441904443",
+            "-8643218964031223565422000000",
+        ),
+        (
+            "21621345890643261443234232965432186543113853297441904443",
+            "21621345890643261443234232965432186543113853297441904443",
+            "0",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let s1 = BigInteger::from_str(data.2).unwrap();
+
+        assert_eq!(&a - &b, s1);
+        assert_eq!(&a - b.clone(), s1);
+        assert_eq!(a.clone() - &b, s1);
+        assert_eq!(a.clone() - b.clone(), s1);
+
+        let c = &a - BigInteger::zero();
+        assert_eq!(c, a);
+        assert_eq!(BigInteger::zero() - &b, -&b);
+
+        let mut d = a.clone();
+        d -= &b;
+        assert_eq!(d, s1);
+
+        d -= &BigInteger::zero();
         assert_eq!(&d, &s1);
     }
 }

@@ -6,7 +6,7 @@ pub mod error;
 mod gmp_integer;
 
 use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
@@ -394,6 +394,64 @@ impl AddAssign<&BigInteger> for BigInteger {
     #[inline]
     fn add_assign(&mut self, b: &BigInteger) {
         self.data.add_assign(&b.data);
+    }
+}
+
+// Subtraction traits /////////////////////////////////////////////////////////
+
+/// Substraction trait for expression `a - &b`. Variable `a` is moved.
+///
+impl Sub<&BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    fn sub(self, b: &BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.sub(&b.data),
+        }
+    }
+}
+
+/// Substraction trait for expression `self - b`. Variables `self` and `b` are moved.
+///
+impl Sub<BigInteger> for BigInteger {
+    type Output = BigInteger;
+
+    fn sub(self, b: BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.sub(&b.data),
+        }
+    }
+}
+
+/// Substraction trait for expression `&self - &b`.
+///
+impl Sub<&BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    fn sub(self, b: &BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.sub(&b.data),
+        }
+    }
+}
+
+/// Substraction trait for expression `&self - b`. Variable `b` is moved.
+///
+impl Sub<BigInteger> for &BigInteger {
+    type Output = BigInteger;
+
+    fn sub(self, b: BigInteger) -> Self::Output {
+        BigInteger {
+            data: self.data.sub(&b.data),
+        }
+    }
+}
+
+/// Substraction assignment trait for expression `self -= &b`.
+///
+impl SubAssign<&BigInteger> for BigInteger {
+    fn sub_assign(&mut self, b: &BigInteger) {
+        self.data.sub_assign(&b.data);
     }
 }
 

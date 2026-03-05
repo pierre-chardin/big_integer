@@ -194,6 +194,26 @@ impl MpzStruct {
         }
     }
 
+    ///  Returns the GMP integer - `op`.
+    ///
+    #[inline]
+    pub fn sub(&self, op: &Self) -> Self {
+        let mut result = MpzStruct::new();
+        unsafe {
+            __gmpz_sub(&mut result, self, op);
+        }
+        result
+    }
+
+    ///  Subtracts `op` from the GMP integer.
+    ///
+    #[inline]
+    pub fn sub_assign(&mut self, op: &Self) {
+        unsafe {
+            __gmpz_sub(self, self, op);
+        }
+    }
+
     ///  Returns the GMP integer * `op`.
     ///
     #[inline]
