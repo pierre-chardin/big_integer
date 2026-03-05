@@ -4,25 +4,86 @@ use big_integer::big_integer::BigInteger;
 use big_integer::big_integer::error::BigIntegerErrorKind;
 use std::str::FromStr;
 
-// TODO: Add tests for negative numbers. and signed interfers i32, i64, i128...
-
 #[test]
 fn to_string() {
     assert_eq!(BigInteger::zero().to_string(), "0");
     assert_eq!(BigInteger::one().to_string(), "1");
 
-    let value = u32::MAX - 43;
-    let value_big_integer = BigInteger::from(value);
-    assert_eq!(value_big_integer.to_string(), value.to_string());
+    {
+        let value = u32::MAX - 43;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
 
-    let value128 = u128::MAX - 43;
-    let value_big_integer = BigInteger::from(value128);
-    assert_eq!(value_big_integer.to_string(), value128.to_string());
+    {
+        let value = i32::MAX - 4321;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = i32::MIN + 542;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = u64::MAX - 8121;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = i64::MAX - 319;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = i64::MIN + 1111;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = u128::MAX - 45432;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = i128::MAX - 5285;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+
+    {
+        let value = i128::MIN + 931;
+        let value_big_integer = BigInteger::from(value);
+        assert_eq!(value_big_integer.to_string(), value.to_string());
+    }
+}
+
+#[test]
+fn format_x() {
+    let test_value: i64 = -66564364635241212;
+    let value = BigInteger::from(test_value);
+
+    assert_eq!(format!("{:o}", value), format!("-{:o}", -test_value));
 }
 
 #[test]
 fn format() {
-    for test_value in [u128::MAX, 45, 0, 432, 765432765434321] {
+    for test_value in [
+        i128::MAX,
+        45,
+        0,
+        432,
+        765432765434321,
+        -25,
+        -765,
+        -66564364635241212,
+    ] {
         let value = BigInteger::from(test_value);
 
         // Decimal output.
@@ -37,68 +98,125 @@ fn format() {
         assert_eq!(format!("{:+#?}", value), format!("{:+#?}", test_value));
 
         assert_eq!(format!("{:04}", value), format!("{:04}", test_value));
-        assert_eq!(format!("{:01}", value), format!("{:01}", test_value));
+        assert_eq!(format!("{:02}", value), format!("{:02}", test_value));
         assert_eq!(format!("{:050}", value), format!("{:050}", test_value));
 
         assert_eq!(format!("{:+04}", value), format!("{:+04}", test_value));
         assert_eq!(format!("{:+01}", value), format!("{:+01}", test_value));
         assert_eq!(format!("{:+050}", value), format!("{:+050}", test_value));
 
-        // Lower hex output.
-        assert_eq!(format!("{:x}", value), format!("{:x}", test_value));
-        assert_eq!(format!("{:+x}", value), format!("{:+x}", test_value));
-        assert_eq!(format!("{:#x}", value), format!("{:#x}", test_value));
-        assert_eq!(format!("{:+#x}", value), format!("{:+#x}", test_value));
+        if test_value >= 0 {
+            // Lower hex output.
+            assert_eq!(format!("{:x}", value), format!("{:x}", test_value));
+            assert_eq!(format!("{:+x}", value), format!("{:+x}", test_value));
+            assert_eq!(format!("{:#x}", value), format!("{:#x}", test_value));
+            assert_eq!(format!("{:+#x}", value), format!("{:+#x}", test_value));
 
-        assert_eq!(format!("{:04x}", value), format!("{:04x}", test_value));
-        assert_eq!(format!("{:01x}", value), format!("{:01x}", test_value));
-        assert_eq!(format!("{:050x}", value), format!("{:050x}", test_value));
+            assert_eq!(format!("{:04x}", value), format!("{:04x}", test_value));
+            assert_eq!(format!("{:02x}", value), format!("{:02x}", test_value));
+            assert_eq!(format!("{:050x}", value), format!("{:050x}", test_value));
 
-        assert_eq!(format!("{:+04x}", value), format!("{:+04x}", test_value));
-        assert_eq!(format!("{:+01x}", value), format!("{:+01x}", test_value));
-        assert_eq!(format!("{:+050x}", value), format!("{:+050x}", test_value));
+            assert_eq!(format!("{:+04x}", value), format!("{:+04x}", test_value));
+            assert_eq!(format!("{:+02x}", value), format!("{:+02x}", test_value));
+            assert_eq!(format!("{:+050x}", value), format!("{:+050x}", test_value));
 
-        // Upper hex output.
-        assert_eq!(format!("{:X}", value), format!("{:X}", test_value));
-        assert_eq!(format!("{:+X}", value), format!("{:+X}", test_value));
-        assert_eq!(format!("{:#X}", value), format!("{:#X}", test_value));
-        assert_eq!(format!("{:+#X}", value), format!("{:+#X}", test_value));
+            // Upper hex output.
+            assert_eq!(format!("{:X}", value), format!("{:X}", test_value));
+            assert_eq!(format!("{:+X}", value), format!("{:+X}", test_value));
+            assert_eq!(format!("{:#X}", value), format!("{:#X}", test_value));
+            assert_eq!(format!("{:+#X}", value), format!("{:+#X}", test_value));
 
-        assert_eq!(format!("{:04X}", value), format!("{:04X}", test_value));
-        assert_eq!(format!("{:01X}", value), format!("{:01X}", test_value));
-        assert_eq!(format!("{:050X}", value), format!("{:050X}", test_value));
+            assert_eq!(format!("{:04X}", value), format!("{:04X}", test_value));
+            assert_eq!(format!("{:02X}", value), format!("{:02X}", test_value));
+            assert_eq!(format!("{:050X}", value), format!("{:050X}", test_value));
 
-        assert_eq!(format!("{:+04X}", value), format!("{:+04X}", test_value));
-        assert_eq!(format!("{:+01X}", value), format!("{:+01X}", test_value));
-        assert_eq!(format!("{:+050X}", value), format!("{:+050X}", test_value));
+            assert_eq!(format!("{:+04X}", value), format!("{:+04X}", test_value));
+            assert_eq!(format!("{:+02X}", value), format!("{:+02X}", test_value));
+            assert_eq!(format!("{:+050X}", value), format!("{:+050X}", test_value));
 
-        // Octal output.
-        assert_eq!(format!("{:o}", value), format!("{:o}", test_value));
-        assert_eq!(format!("{:+o}", value), format!("{:+o}", test_value));
-        assert_eq!(format!("{:#o}", value), format!("{:#o}", test_value));
-        assert_eq!(format!("{:+#o}", value), format!("{:+#o}", test_value));
+            // Octal output.
+            assert_eq!(format!("{:o}", value), format!("{:o}", test_value));
+            assert_eq!(format!("{:+o}", value), format!("{:+o}", test_value));
+            assert_eq!(format!("{:#o}", value), format!("{:#o}", test_value));
+            assert_eq!(format!("{:+#o}", value), format!("{:+#o}", test_value));
 
-        assert_eq!(format!("{:04o}", value), format!("{:04o}", test_value));
-        assert_eq!(format!("{:01o}", value), format!("{:01o}", test_value));
-        assert_eq!(format!("{:050o}", value), format!("{:050o}", test_value));
+            assert_eq!(format!("{:04o}", value), format!("{:04o}", test_value));
+            assert_eq!(format!("{:02o}", value), format!("{:02o}", test_value));
+            assert_eq!(format!("{:050o}", value), format!("{:050o}", test_value));
 
-        assert_eq!(format!("{:+04o}", value), format!("{:+04o}", test_value));
-        assert_eq!(format!("{:+01o}", value), format!("{:+01o}", test_value));
-        assert_eq!(format!("{:+050o}", value), format!("{:+050o}", test_value));
+            assert_eq!(format!("{:+04o}", value), format!("{:+04o}", test_value));
+            assert_eq!(format!("{:+02o}", value), format!("{:+02o}", test_value));
+            assert_eq!(format!("{:+050o}", value), format!("{:+050o}", test_value));
 
-        // Upper hex output.
-        assert_eq!(format!("{:b}", value), format!("{:b}", test_value));
-        assert_eq!(format!("{:+b}", value), format!("{:+b}", test_value));
-        assert_eq!(format!("{:#b}", value), format!("{:#b}", test_value));
-        assert_eq!(format!("{:+#b}", value), format!("{:+#b}", test_value));
+            // Binary output.
+            assert_eq!(format!("{:b}", value), format!("{:b}", test_value));
+            assert_eq!(format!("{:+b}", value), format!("{:+b}", test_value));
+            assert_eq!(format!("{:#b}", value), format!("{:#b}", test_value));
+            assert_eq!(format!("{:+#b}", value), format!("{:+#b}", test_value));
 
-        assert_eq!(format!("{:04b}", value), format!("{:04b}", test_value));
-        assert_eq!(format!("{:01b}", value), format!("{:01b}", test_value));
-        assert_eq!(format!("{:050b}", value), format!("{:050b}", test_value));
+            assert_eq!(format!("{:04b}", value), format!("{:04b}", test_value));
+            assert_eq!(format!("{:02b}", value), format!("{:02b}", test_value));
+            assert_eq!(format!("{:050b}", value), format!("{:050b}", test_value));
 
-        assert_eq!(format!("{:+04b}", value), format!("{:+04b}", test_value));
-        assert_eq!(format!("{:+01b}", value), format!("{:+01b}", test_value));
-        assert_eq!(format!("{:+050b}", value), format!("{:+050b}", test_value));
+            assert_eq!(format!("{:+04b}", value), format!("{:+04b}", test_value));
+            assert_eq!(format!("{:+02b}", value), format!("{:+02b}", test_value));
+            assert_eq!(format!("{:+050b}", value), format!("{:+050b}", test_value));
+        } else {
+            assert_eq!(format!("{:x}", value), format!("-{:x}", -test_value));
+            assert_eq!(format!("{:+x}", value), format!("-{:x}", -test_value));
+            assert_eq!(format!("{:#x}", value), format!("-{:#x}", -test_value));
+            assert_eq!(format!("{:+#x}", value), format!("-{:#x}", -test_value));
+
+            assert_eq!(format!("{:04x}", value), format!("-{:03x}", -test_value));
+            assert_eq!(format!("{:02x}", value), format!("-{:01x}", -test_value));
+            assert_eq!(format!("{:050x}", value), format!("-{:049x}", -test_value));
+
+            assert_eq!(format!("{:+04x}", value), format!("-{:03x}", -test_value));
+            assert_eq!(format!("{:+02x}", value), format!("-{:01x}", -test_value));
+            assert_eq!(format!("{:+050x}", value), format!("-{:049x}", -test_value));
+
+            // Upper hex output.
+            assert_eq!(format!("{:X}", value), format!("-{:X}", -test_value));
+            assert_eq!(format!("{:+X}", value), format!("-{:X}", -test_value));
+            assert_eq!(format!("{:#X}", value), format!("-{:#X}", -test_value));
+            assert_eq!(format!("{:+#X}", value), format!("-{:#X}", -test_value));
+
+            assert_eq!(format!("{:04X}", value), format!("-{:03X}", -test_value));
+            assert_eq!(format!("{:02X}", value), format!("-{:01X}", -test_value));
+            assert_eq!(format!("{:050X}", value), format!("-{:049X}", -test_value));
+
+            assert_eq!(format!("{:+04X}", value), format!("-{:03X}", -test_value));
+            assert_eq!(format!("{:+02X}", value), format!("-{:01X}", -test_value));
+            assert_eq!(format!("{:+050X}", value), format!("-{:049X}", -test_value));
+
+            // Octal output.
+            assert_eq!(format!("{:o}", value), format!("-{:o}", -test_value));
+            assert_eq!(format!("{:+o}", value), format!("-{:o}", -test_value));
+            assert_eq!(format!("{:#o}", value), format!("-{:#o}", -test_value));
+            assert_eq!(format!("{:+#o}", value), format!("-{:#o}", -test_value));
+
+            assert_eq!(format!("{:04o}", value), format!("-{:03o}", -test_value));
+            assert_eq!(format!("{:02o}", value), format!("-{:01o}", -test_value));
+            assert_eq!(format!("{:050o}", value), format!("-{:049o}", -test_value));
+
+            assert_eq!(format!("{:+04o}", value), format!("-{:03o}", -test_value));
+            assert_eq!(format!("{:+02o}", value), format!("-{:01o}", -test_value));
+            assert_eq!(format!("{:+050o}", value), format!("-{:049o}", -test_value));
+
+            // Binary output.
+            assert_eq!(format!("{:b}", value), format!("-{:b}", -test_value));
+            assert_eq!(format!("{:+b}", value), format!("-{:b}", -test_value));
+            assert_eq!(format!("{:#b}", value), format!("-{:#b}", -test_value));
+            assert_eq!(format!("{:+#b}", value), format!("-{:#b}", -test_value));
+
+            assert_eq!(format!("{:04b}", value), format!("-{:03b}", -test_value));
+            assert_eq!(format!("{:02b}", value), format!("-{:01b}", -test_value));
+            assert_eq!(format!("{:050b}", value), format!("-{:049b}", -test_value));
+
+            assert_eq!(format!("{:+04b}", value), format!("-{:03b}", -test_value));
+            assert_eq!(format!("{:+02b}", value), format!("-{:01b}", -test_value));
+            assert_eq!(format!("{:+050b}", value), format!("-{:049b}", -test_value));
+        }
     }
 }
 
@@ -166,19 +284,44 @@ fn from_str_radix() {
         ),
     ];
 
+    // Positive numbers.
     for (radix, value_string, to_str) in test_data {
         let value_big_integer = BigInteger::from_str_radix(value_string, radix).unwrap();
         assert_eq!(to_str(&value_big_integer), value_string.to_uppercase());
 
-        let value_string_with_leading_zeros = String::from_str("000").unwrap() + value_string;
-        let value_big_integer2 =
-            BigInteger::from_str_radix(&value_string_with_leading_zeros, radix).unwrap();
-        assert_eq!(value_big_integer2, value_big_integer);
+        let negative_value_big_integer;
+        {
+            let negative_value_string = String::from_str("-").unwrap() + value_string;
+            negative_value_big_integer =
+                BigInteger::from_str_radix(&negative_value_string, radix).unwrap();
+            assert_eq!(
+                to_str(&negative_value_big_integer),
+                negative_value_string.to_uppercase()
+            );
+        }
 
-        let value_string_with_plus = String::from_str("+000").unwrap() + value_string;
-        let value_big_integer3 =
-            BigInteger::from_str_radix(&value_string_with_plus, radix).unwrap();
-        assert_eq!(value_big_integer3, value_big_integer);
+        {
+            let value_string_with_leading_zeros = String::from_str("000").unwrap() + value_string;
+            let value_big_integer_other =
+                BigInteger::from_str_radix(&value_string_with_leading_zeros, radix).unwrap();
+            assert_eq!(value_big_integer_other, value_big_integer);
+        }
+
+        {
+            let value_string_with_plus = String::from_str("+000").unwrap() + value_string;
+            let value_big_integer_other =
+                BigInteger::from_str_radix(&value_string_with_plus, radix).unwrap();
+            assert_eq!(value_big_integer_other, value_big_integer);
+        }
+
+        {
+            let negative_value_string_with_leading_zeros =
+                String::from_str("-000").unwrap() + value_string;
+            let negative_value_big_integer_other =
+                BigInteger::from_str_radix(&negative_value_string_with_leading_zeros, radix)
+                    .unwrap();
+            assert_eq!(negative_value_big_integer_other, negative_value_big_integer);
+        }
     }
 
     for (radix, value_string) in err_test_data {
@@ -223,15 +366,30 @@ fn equal() {
     assert_ne!(BigInteger::zero(), BigInteger::one());
     assert_ne!(BigInteger::one(), BigInteger::zero());
 
-    let value1_string = "5341244814206912412774132148472101346641124414";
-    let value1 = BigInteger::from_str(value1_string).unwrap();
-    let value1_copy = BigInteger::from_str(value1_string).unwrap();
-    assert_eq!(value1, value1_copy);
-    assert_ne!(value1, BigInteger::zero());
-    assert_ne!(value1, BigInteger::one());
+    {
+        let value1_string = "5341244814206912412774132148472101346641124414";
+        let value1 = BigInteger::from_str(value1_string).unwrap();
+        let value1_copy = BigInteger::from_str(value1_string).unwrap();
+        assert_eq!(value1, value1_copy);
+        assert_ne!(value1, BigInteger::zero());
+        assert_ne!(value1, BigInteger::one());
 
-    let value2 = BigInteger::from_str("5341244814206912412774132148472101346641124410").unwrap();
-    assert_ne!(value1, value2);
+        let value2 =
+            BigInteger::from_str("5341244814206912412774132148472101346641124410").unwrap();
+        assert_ne!(value1, value2);
+    }
+
+    {
+        let value1_string = "-44814206912412774132148472101346641124414";
+        let value1 = BigInteger::from_str(value1_string).unwrap();
+        let value1_copy = BigInteger::from_str(value1_string).unwrap();
+        assert_eq!(value1, value1_copy);
+        assert_ne!(value1, BigInteger::zero());
+        assert_ne!(value1, BigInteger::one());
+
+        let value2 = BigInteger::from_str("23232").unwrap();
+        assert_ne!(value1, value2);
+    }
 }
 
 #[test]
@@ -299,6 +457,24 @@ fn add_assign() {
 
         assert_eq!(v, expected);
     }
+
+    {
+        let mut v = BigInteger::from_str_radix(
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA",
+            16,
+        )
+        .unwrap();
+
+        let mut a = BigInteger::from_str_radix(
+            "-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA",
+            16,
+        )
+        .unwrap();
+
+        v += &a;
+
+        assert_eq!(v, BigInteger::zero());
+    }
 }
 
 #[test]
@@ -347,25 +523,49 @@ fn add() {
 
 #[test]
 fn mul() {
-    let a = BigInteger::from_str("94216502321054376443222300543223455").unwrap();
-    let b = BigInteger::from_str("7645388531954212345777324452245224").unwrap();
-
-    let p1 = BigInteger::from_str(
-        "720321766366226559177076379734170052180946354147405194899833088528920",
-    )
-    .unwrap();
-
-    assert_eq!(&a * &b, p1);
-    assert_eq!(&a * b.clone(), p1);
-    assert_eq!(a.clone() * &b, p1);
-    assert_eq!(a.clone() * b.clone(), p1);
-
-    let c = &a * BigInteger::zero();
-    assert_eq!(c, BigInteger::zero());
-    assert_eq!(BigInteger::zero() * &b, BigInteger::zero());
     assert_eq!(BigInteger::zero() * BigInteger::zero(), BigInteger::zero());
-
-    assert_eq!(&a * BigInteger::one(), a);
-    assert_eq!(BigInteger::one() * &b, b);
     assert_eq!(BigInteger::one() * BigInteger::one(), BigInteger::one());
+
+    // Values of each tupple: a, b, a*b
+    let test_data = [
+        (
+            "94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+        ),
+        (
+            "-94216502321054376443222300543223455",
+            "7645388531954212345777324452245224",
+            "-720321766366226559177076379734170052180946354147405194899833088528920",
+        ),
+        (
+            "-94216502321054376443222300543223455",
+            "-7645388531954212345777324452245224",
+            "720321766366226559177076379734170052180946354147405194899833088528920",
+        ),
+        (
+            "1000000000000000000000000000000",
+            "4444444444444445678432298542",
+            "4444444444444445678432298542000000000000000000000000000000",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let p1 = BigInteger::from_str(data.2).unwrap();
+
+        assert_eq!(&a * &b, p1);
+        assert_eq!(&a * b.clone(), p1);
+        assert_eq!(a.clone() * &b, p1);
+        assert_eq!(a.clone() * b.clone(), p1);
+
+        let c = &a * BigInteger::zero();
+        assert_eq!(c, BigInteger::zero());
+        assert_eq!(BigInteger::zero() * &b, BigInteger::zero());
+
+        assert_eq!(&a * BigInteger::one(), a);
+        assert_eq!(BigInteger::one() * &b, b);
+    }
 }

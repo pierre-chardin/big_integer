@@ -10,11 +10,11 @@ use std::ops::{Add, AddAssign, Mul};
 use std::str::FromStr;
 
 use crate::big_integer::error::{BigIntegerErrorKind, ParseBigIntegerError};
-use crate::big_integer::gmp_integer::{ByteOrder, UWord};
+use crate::big_integer::gmp_integer::{ByteOrder, SWord, UWord};
 use gmp_integer::MpzStruct;
 
 /// Struct `BigInteger` is an arbitrary-precision integer.
-/// It provides operation similar to RUST operators for integer primitive types (i32, i64, i128...).
+/// It provides arithmetic operations and conversion from various RUST native types.
 ///
 #[derive(Clone, PartialEq)]
 pub struct BigInteger {
@@ -76,7 +76,8 @@ impl Default for BigInteger {
 ///
 impl Display for BigInteger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "", &self.data.to_string_radix(10))
+        let (str, is_nonnegative) = self.data.to_string_radix(10);
+        f.pad_integral(is_nonnegative, "", &str)
     }
 }
 
@@ -90,34 +91,46 @@ impl Debug for BigInteger {
 }
 
 /// LowerHex trait.
+/// For positive values, format will be the same as for sign or unsigned RUST builtin integers.
+/// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl LowerHex for BigInteger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "0x", &self.data.to_string_lowercase_radix(16))
+        let (str, is_nonnegative) = self.data.to_string_lowercase_radix(16);
+        f.pad_integral(is_nonnegative, "0x", &str)
     }
 }
 
 /// UpperHex trait.
+/// For positive values, format will be the same as for sign or unsigned RUST builtin integers.
+/// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl UpperHex for BigInteger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "0x", &self.data.to_string_uppercase_radix(16))
+        let (str, is_nonnegative) = self.data.to_string_uppercase_radix(16);
+        f.pad_integral(is_nonnegative, "0x", &str)
     }
 }
 
 /// Octal trait.
+/// For positive values, format will be the same as for sign or unsigned RUST builtin integers.
+/// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl Octal for BigInteger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "0o", &self.data.to_string_radix(8))
+        let (str, is_nonnegative) = self.data.to_string_radix(8);
+        f.pad_integral(is_nonnegative, "0o", &str)
     }
 }
 
 /// Binary trait.
+/// For positive values, format will be the same as for sign or unsigned RUST builtin integers.
+/// Negative values are displayed with a negative sign (not its 2's complement).
 ///
 impl Binary for BigInteger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad_integral(true, "0b", &self.data.to_string_radix(2))
+        let (str, is_nonnegative) = self.data.to_string_radix(2);
+        f.pad_integral(is_nonnegative, "0b", &str)
     }
 }
 
@@ -143,20 +156,68 @@ impl From<u128> for BigInteger {
     }
 }
 
+/// From trait for ii128 type.
+///
+impl From<i128> for BigInteger {
+    fn from(value: i128) -> Self {
+        let (u_value, sign_is_minus) = if value >= 0 {
+            (value as u128, false)
+        } else {
+            (-value as u128, true)
+        };
+
+        BigInteger {
+            data: MpzStruct::from_bytes(
+                sign_is_minus,
+                &u_value.to_ne_bytes(),
+                ByteOrder::NativeEndian,
+            ),
+        }
+    }
+}
+
 /// From trait for u64 type.
 ///
 impl From<u64> for BigInteger {
     fn from(value: u64) -> Self {
         // Compiler will remove dead code if UWord is an u64.
 
-        if value > UWord::MAX {
+        if value <= UWord::MAX {
             return BigInteger {
-                data: MpzStruct::from_u_word(value),
+                data: MpzStruct::from_u_word(value as UWord),
             };
         }
 
         BigInteger {
             data: MpzStruct::from_bytes(false, &value.to_ne_bytes(), ByteOrder::NativeEndian),
+        }
+    }
+}
+
+/// From trait for i64 type.
+///
+impl From<i64> for BigInteger {
+    fn from(value: i64) -> Self {
+        // Compiler will remove dead code if SWord is an i64.
+
+        if (value >= SWord::MIN) && (value <= SWord::MAX) {
+            return BigInteger {
+                data: MpzStruct::from_s_word(value as SWord),
+            };
+        }
+
+        let (u_value, sign_is_minus) = if value >= 0 {
+            (value as u64, false)
+        } else {
+            (-value as u64, true)
+        };
+
+        BigInteger {
+            data: MpzStruct::from_bytes(
+                sign_is_minus,
+                &u_value.to_ne_bytes(),
+                ByteOrder::NativeEndian,
+            ),
         }
     }
 }
@@ -171,6 +232,16 @@ impl From<u32> for BigInteger {
     }
 }
 
+/// From trait for i32 type.
+///
+impl From<i32> for BigInteger {
+    fn from(value: i32) -> Self {
+        BigInteger {
+            data: MpzStruct::from_s_word(value as SWord),
+        }
+    }
+}
+
 /// From trait for u16 type.
 ///
 impl From<u16> for BigInteger {
@@ -181,12 +252,32 @@ impl From<u16> for BigInteger {
     }
 }
 
+/// From trait for i16 type.
+///
+impl From<i16> for BigInteger {
+    fn from(value: i16) -> Self {
+        BigInteger {
+            data: MpzStruct::from_s_word(value as SWord),
+        }
+    }
+}
+
 /// From trait for u8 type.
 ///
 impl From<u8> for BigInteger {
     fn from(value: u8) -> Self {
         BigInteger {
             data: MpzStruct::from_u_word(value as UWord),
+        }
+    }
+}
+
+/// From trait for i8 type.
+///
+impl From<i8> for BigInteger {
+    fn from(value: i8) -> Self {
+        BigInteger {
+            data: MpzStruct::from_s_word(value as SWord),
         }
     }
 }

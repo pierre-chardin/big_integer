@@ -124,38 +124,42 @@ impl MpzStruct {
         from_str_radix_internal(src, to_gmp_radix(radix))
     }
 
-    /// Converts the GMP integer to a lowercase string for the given `radix`. If
-    /// `radix`equal or less than 10, one should use instead [`to_string_radix()`].
+    /// Returns the GMP integer converted to a lowercase string for the given `radix` and a boolean
+    /// that is `true` if and only if the integer is nonnegative.
+    ///
+    /// If `radix`equal or less than 10, one should use instead [`to_string_radix()`].
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_lowercase_radix(&self, radix: u32) -> String {
+    pub fn to_string_lowercase_radix(&self, radix: u32) -> (String, bool) {
         to_string_radix_internal(self, to_gmp_radix(radix))
     }
 
-    /// Converts the GMP integer to an uppercase string for the given `radix`.If
-    /// `radix`equal or less than 10, one should use instead [`to_string_radix()`].
+    /// Returns the GMP integer converted to an uppercase string for the given `radix` and a boolean
+    /// that is `true` if and only if the integer is nonnegative.
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_uppercase_radix(&self, radix: u32) -> String {
-        to_string_radix_internal(self, to_gmp_radix(radix)).to_uppercase()
+    pub fn to_string_uppercase_radix(&self, radix: u32) -> (String, bool) {
+        let (str, sign) = to_string_radix_internal(self, to_gmp_radix(radix));
+        (str.to_uppercase(), sign)
     }
 
-    /// Converts the GMP integer to a string for the given `radix`. Any character case may be used.
+    /// Returns the GMP integer converted to a string (any character case) for the given `radix`
+    /// and a boolean that is `true` if and only if the integer is nonnegative.
     ///
     /// # Panics
     ///
     /// Panics if given a `radix` smaller than 2 or larger than 36.
     ///
     #[inline]
-    pub fn to_string_radix(&self, radix: u32) -> String {
+    pub fn to_string_radix(&self, radix: u32) -> (String, bool) {
         to_string_radix_internal(self, to_gmp_radix(radix))
     }
 
@@ -261,22 +265,33 @@ fn from_str_radix_internal(src: &str, radix: c_int) -> Option<MpzStruct> {
     }
 }
 
-/// Converts a GMP integer  to a string for the given `radix`. Does not check if `radix` is valid.
-/// Return string is always lowercase.
+/// Returns the GMP integer converted to a lowercase string for the given `radix` and a boolean
+/// that is `true` if and only if the integer is nonnegative. Does not check if `radix` is valid.
 ///
-fn to_string_radix_internal(value: &MpzStruct, radix: c_int) -> String {
+fn to_string_radix_internal(value: &MpzStruct, radix: c_int) -> (String, bool) {
     let str: String;
+    let is_nonnegative: bool;
     unsafe {
         // Build the "C" string.
         let str_c = __gmpz_get_str(std::ptr::null_mut(), radix, value);
 
+        let start_str_c;
+        if *str_c == b'-' as c_char {
+            // Remove leading '-'.
+            start_str_c = str_c.add(1);
+            is_nonnegative = false
+        } else {
+            start_str_c = str_c;
+            is_nonnegative = true;
+        }
+
         // Convert the "C" string to a RUST string.
-        str = CStr::from_ptr(str_c).to_str().unwrap().to_owned();
+        str = CStr::from_ptr(start_str_c).to_str().unwrap().to_owned();
 
         // Free the memory allocated by GMP.
         libc::free(str_c as *mut c_void);
     }
-    str
+    (str, is_nonnegative)
 }
 
 // "C" bindings to GMP library ////////////////////////////////////////////////
