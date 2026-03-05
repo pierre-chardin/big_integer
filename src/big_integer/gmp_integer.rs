@@ -5,6 +5,7 @@
 //TODO: Check visibility. This module should be internal to big_integer.
 
 use libc::{c_char, c_int, c_long, c_ulong, size_t};
+use std::cmp::Ordering;
 use std::ffi::{CStr, CString, c_void};
 use std::mem;
 
@@ -367,6 +368,21 @@ impl PartialEq for MpzStruct {
 }
 
 impl Eq for MpzStruct {}
+
+/// Traits for ordering
+///
+impl Ord for MpzStruct {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let v: c_int = unsafe { __gmpz_cmp(self, other) };
+        v.cmp(&0)
+    }
+}
+
+impl PartialOrd for MpzStruct {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 /// Returns the radix safely cast to GMP.
 /// Panics if radix is invalid.

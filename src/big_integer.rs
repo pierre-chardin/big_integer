@@ -18,7 +18,7 @@ use gmp_integer::MpzStruct;
 /// Struct `BigInteger` is an arbitrary-precision integer.
 /// It provides arithmetic operations and conversion from various RUST native types.
 ///
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BigInteger {
     data: MpzStruct,
 }

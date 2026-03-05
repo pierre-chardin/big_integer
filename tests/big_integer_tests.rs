@@ -393,6 +393,18 @@ fn equal() {
 }
 
 #[test]
+fn order() {
+    let a = BigInteger::from_str("45432246654432222").unwrap();
+    let b = BigInteger::from_str("-443242424312").unwrap();
+
+    assert!(a > b);
+    assert!(a > b);
+    assert!(a >= b);
+    assert!(b < a);
+    assert!(b <= a)
+}
+
+#[test]
 fn clone() {
     assert_eq!(BigInteger::zero().clone(), BigInteger::zero());
     assert_eq!(BigInteger::one().clone(), BigInteger::one());
