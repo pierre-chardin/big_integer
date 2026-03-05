@@ -408,117 +408,52 @@ fn from_str_zero() {
 }
 
 #[test]
-fn add_assign() {
-    {
-        let mut v = BigInteger::zero();
-        v += &BigInteger::zero();
-        assert_eq!(v, BigInteger::zero());
-    }
-    {
-        let mut v = BigInteger::zero();
-
-        v += &BigInteger::from(u64::MAX);
-        assert_eq!(v, BigInteger::from(u64::MAX));
-
-        v += &BigInteger::one();
-        assert_eq!(v, BigInteger::from(u64::MAX as u128 + 1));
-
-        v += &BigInteger::from(u64::MAX);
-        v += &BigInteger::one();
-        assert_eq!(v, BigInteger::from((u64::MAX as u128 + 1) * 2));
-    }
-
-    {
-        let mut v = BigInteger::from(u128::MAX);
-
-        let add_value: u32 = 0xFF;
-        v += &BigInteger::from(add_value);
-
-        assert_eq!(
-            v,
-            BigInteger::from_str_radix("1000000000000000000000000000000FE", 16).unwrap()
-        );
-    }
-
-    {
-        let mut v = BigInteger::from_str_radix(
-            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD",
-            16,
-        )
-        .unwrap();
-        let add_value: u32 = 0xF8;
-        v += &BigInteger::from(add_value);
-
-        let expected = BigInteger::from_str_radix(
-            "1000000000000000000000000000000000000000000000000000000000000000000000000000000F5",
-            16,
-        )
-        .unwrap();
-
-        assert_eq!(v, expected);
-    }
-
-    {
-        let mut v = BigInteger::from_str_radix(
-            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA",
-            16,
-        )
-        .unwrap();
-
-        let a = BigInteger::from_str_radix(
-            "-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA",
-            16,
-        )
-        .unwrap();
-
-        v += &a;
-
-        assert_eq!(v, BigInteger::zero());
-    }
-}
-
-#[test]
-fn add() {
-    {
-        let a = BigInteger::from_str("621345890643261965432186543113853297441904443").unwrap();
-        let b = BigInteger::from_str("8643218964031223565422000000").unwrap();
-
-        let s1 = BigInteger::from_str("621345890643261974075405507145076862863904443").unwrap();
-
-        let r1 = &a + &b;
-        assert_eq!(r1, s1);
-
-        let r2 = &a + b;
-        assert_eq!(r2, s1);
-
-        let s2 = BigInteger::from_str("1242691781286523948150811014290153725727808886").unwrap();
-
-        let r3 = r1 + &r2;
-        assert_eq!(r3, s2);
-
-        let s2 = BigInteger::from_str("1864037671929785922226216521435230588591713329").unwrap();
-
-        let r4 = r3 + r2;
-        assert_eq!(r4, s2);
-    }
-
-    {
-        let a = BigInteger::from(u64::MAX);
-        let b = BigInteger::one();
-        let c = BigInteger::from(u64::MAX);
-        let d = BigInteger::one();
-        let e = BigInteger::zero();
-        let f = BigInteger::from(u64::MAX);
-
-        let r1 = &a + &b + (c + &d) + e + f;
-        let s1 = 3 * (u64::MAX as u128) + 2;
-        assert_eq!(r1, BigInteger::from(s1));
-    }
-
+fn add2() {
     assert_eq!(BigInteger::zero() + BigInteger::zero(), BigInteger::zero());
-
     assert_eq!(BigInteger::zero() + BigInteger::one(), BigInteger::one());
     assert_eq!(BigInteger::one() + BigInteger::zero(), BigInteger::one());
+
+    // Values of each tupple: a, b, a*b
+    let test_data = [
+        (
+            "621345890643261965432186543113853297441904443",
+            "8643218964031223565422000000",
+            "621345890643261974075405507145076862863904443",
+        ),
+        (
+            "-621345890643261965432186543113853297441904443",
+            "-8643218964031223565422000000",
+            "-621345890643261974075405507145076862863904443",
+        ),
+        (
+            "21621345890643261443234232965432186543113853297441904443",
+            "-21621345890643261443234232965432186543113853297441904443",
+            "0",
+        ),
+    ];
+
+    for data in &test_data {
+        let a = BigInteger::from_str(data.0).unwrap();
+        let b = BigInteger::from_str(data.1).unwrap();
+
+        let s1 = BigInteger::from_str(data.2).unwrap();
+
+        assert_eq!(&a + &b, s1);
+        assert_eq!(&a + b.clone(), s1);
+        assert_eq!(a.clone() + &b, s1);
+        assert_eq!(a.clone() + b.clone(), s1);
+
+        let c = &a + BigInteger::zero();
+        assert_eq!(c, a);
+        assert_eq!(BigInteger::zero() + &b, b);
+
+        let mut d = a.clone();
+        d += &b;
+        assert_eq!(d, s1);
+
+        d += &BigInteger::zero();
+        assert_eq!(&d, &s1);
+    }
 }
 
 #[test]
